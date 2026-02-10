@@ -65,7 +65,8 @@ class ServerApp:
 
         style.configure("TFrame", background="#f1f5f9")
         style.configure("TLabel", background="#f1f5f9", foreground="#0f172a")
-        style.configure("Muted.TLabel", background="#f1f5f9", foreground="#64748b")
+        style.configure("Muted.TLabel", background="#f1f5f9",
+                        foreground="#64748b")
         style.configure(
             "Card.TLabelframe",
             background="#ffffff",
@@ -124,7 +125,8 @@ class ServerApp:
         )
         config_frame.pack(fill="x")
 
-        ttk.Label(config_frame, text="Directory:").grid(row=0, column=0, sticky="w")
+        ttk.Label(config_frame, text="Directory:").grid(
+            row=0, column=0, sticky="w")
         dir_entry = ttk.Entry(config_frame, textvariable=self.directory_var)
         dir_entry.grid(row=0, column=1, sticky="ew", padx=8)
         ttk.Button(
@@ -133,8 +135,10 @@ class ServerApp:
             row=0, column=2, sticky="e"
         )
 
-        ttk.Label(config_frame, text="Port:").grid(row=1, column=0, sticky="w", pady=(8, 0))
-        port_entry = ttk.Entry(config_frame, textvariable=self.port_var, width=10)
+        ttk.Label(config_frame, text="Port:").grid(
+            row=1, column=0, sticky="w", pady=(8, 0))
+        port_entry = ttk.Entry(
+            config_frame, textvariable=self.port_var, width=10)
         port_entry.grid(row=1, column=1, sticky="w", padx=8, pady=(8, 0))
 
         config_frame.columnconfigure(1, weight=1)
@@ -155,7 +159,8 @@ class ServerApp:
             style="Ghost.TButton",
         ).pack(side="left", padx=6)
 
-        log_frame = ttk.LabelFrame(main, text="Logs", padding=12, style="Card.TLabelframe")
+        log_frame = ttk.LabelFrame(
+            main, text="Logs", padding=12, style="Card.TLabelframe")
         log_frame.pack(fill="both", expand=True, pady=(12, 0))
 
         self.log_text = tk.Text(
@@ -172,12 +177,14 @@ class ServerApp:
         self.log_text.pack(side="left", fill="both", expand=True)
         self.log_text.configure(state="disabled")
 
-        scrollbar = ttk.Scrollbar(log_frame, orient="vertical", command=self.log_text.yview)
+        scrollbar = ttk.Scrollbar(
+            log_frame, orient="vertical", command=self.log_text.yview)
         scrollbar.pack(side="right", fill="y")
         self.log_text.configure(yscrollcommand=scrollbar.set)
 
     def browse_dir(self):
-        directory = filedialog.askdirectory(initialdir=self.directory_var.get())
+        directory = filedialog.askdirectory(
+            initialdir=self.directory_var.get())
         if directory:
             self.directory_var.set(directory)
 
@@ -205,7 +212,8 @@ class ServerApp:
             self.server = None
             return
 
-        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread = threading.Thread(
+            target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.status_var.set(f"Running on http://localhost:{port}")
         self._log(f"Serving: {directory}")

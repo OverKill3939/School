@@ -1,0 +1,236 @@
+﻿<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تقویم آموزشی | هنرستان دارالفنون</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/calendar.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-top">
+      <span class="district-pill">منطقه آموزش: استان سمنان، شهر شاهرود</span>
+      <div class="top-links">
+        <a href="#">کارکنان</a>
+        <a href="#">فارغ‌التحصیلان</a>
+      </div>
+    </div>
+    <div class="header-main">
+      <div class="brand">
+        <div class="mark" aria-label="نشان مدرسه">
+          <img src="img/daralfonon.jpg" alt="لوگوی هنرستان دارالفنون" />
+        </div>
+        <div class="wordmark">
+          <span class="name">هنرستان دارالفنون</span>
+          <span class="tag">شبکه و نرم‌افزار • برق • الکترونیک</span>
+        </div>
+      </div>
+      <nav class="nav">
+                  <a href="index.html">خانه</a>
+
+        <a href="#">دانش‌آموزان</a>
+        <a href="#">اخبار</a>
+        <a href="#">تقویم</a>
+        <a href="#">درباره</a>
+      </nav>
+      <div class="header-actions">
+        <button class="cta cta-secondary">ورود</button>
+        <button class="cta">ثبت‌نام</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <header class="page-header">
+      <div class="container">
+        <h1>تقویم آموزشی</h1>
+        <p>نمایش تعطیلات رسمی و رویدادهای ماهانه مدرسه.</p>
+      </div>
+    </header>
+
+    <section class="calendar-section">
+      <div class="container">
+        <div class="calendar-card">
+          <div class="calendar-top">
+            <div class="calendar-nav">
+              <button class="nav-btn" data-cal-prev aria-label="ماه قبل">‹</button>
+              <div class="calendar-title">
+                <h2 id="calendar-title">بهمن 1404</h2>
+                <span id="calendar-subtitle">رویدادهای ماه</span>
+              </div>
+              <button class="nav-btn" data-cal-next aria-label="ماه بعد">›</button>
+            </div>
+
+            <div class="calendar-actions">
+              <div class="calendar-filters">
+                <label class="filter-chip holiday">
+                  <input type="checkbox" value="holiday" checked data-filter-type />
+                  تعطیل رسمی
+                </label>
+                <label class="filter-chip weekend">
+                  <input type="checkbox" value="weekend" checked data-filter-type />
+                  تعطیل هفتگی
+                </label>
+                <label class="filter-chip exam">
+                  <input type="checkbox" value="exam" checked data-filter-type />
+                  روز امتحان
+                </label>
+                <label class="filter-chip event">
+                  <input type="checkbox" value="event" checked data-filter-type />
+                  رویداد
+                </label>
+                <label class="filter-chip extra-holiday">
+                  <input type="checkbox" value="extra-holiday" checked data-filter-type />
+                  تعطیلی اضافه
+                </label>
+              </div>
+              <div class="calendar-action-buttons">
+                <button class="btn ghost" id="calendar-today">برو به امروز</button>
+                <button class="btn" id="toggle-event-panel" type="button">افزودن رویداد</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="calendar-layout">
+            <section class="calendar-board">
+              <div class="calendar-grid" id="calendar-grid" aria-live="polite"></div>
+
+              <div class="calendar-details" id="calendar-details">
+                <h3>جزئیات روز انتخاب شده</h3>
+                <p>برای مشاهده جزئیات، یکی از روزهای دارای رویداد را انتخاب کنید.</p>
+              </div>
+
+              <section class="event-panel" id="event-panel" hidden>
+                <h3>ثبت رویداد جدید</h3>
+                <p class="panel-hint">این رویدادها به صورت محلی در همین مرورگر ذخیره می‌شوند.</p>
+
+                <form class="event-form" id="event-form" autocomplete="off">
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label for="event-year">تاریخ (شمسی)</label>
+                      <div class="date-row">
+                        <input id="event-year" type="number" min="1400" max="1413" placeholder="سال" required />
+                        <select id="event-month" required>
+                          <option value="1">فروردین</option>
+                          <option value="2">اردیبهشت</option>
+                          <option value="3">خرداد</option>
+                          <option value="4">تیر</option>
+                          <option value="5">مرداد</option>
+                          <option value="6">شهریور</option>
+                          <option value="7">مهر</option>
+                          <option value="8">آبان</option>
+                          <option value="9">آذر</option>
+                          <option value="10">دی</option>
+                          <option value="11">بهمن</option>
+                          <option value="12">اسفند</option>
+                        </select>
+                        <input id="event-day" type="number" min="1" max="31" placeholder="روز" required />
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="event-title">عنوان</label>
+                      <input id="event-title" type="text" maxlength="60" required placeholder="عنوان رویداد" />
+                    </div>
+
+                    <div class="form-group">
+                      <label for="event-type">نوع</label>
+                      <select id="event-type" required>
+                        <option value="exam">روز امتحان</option>
+                        <option value="event">رویداد</option>
+                        <option value="extra-holiday">تعطیلی اضافه</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="event-notes">توضیح (اختیاری)</label>
+                      <textarea id="event-notes" rows="2" maxlength="120" placeholder="توضیحات کوتاه"></textarea>
+                    </div>
+                  </div>
+
+                  <p class="form-error" id="event-error" hidden></p>
+
+                  <div class="form-actions">
+                    <button class="btn" type="submit">ثبت رویداد</button>
+                    <button class="btn ghost" type="button" id="event-reset">پاک کردن فرم</button>
+                  </div>
+                </form>
+
+                <div class="event-list" id="event-list"></div>
+              </section>
+            </section>
+
+            <aside class="calendar-side">
+              <div class="side-card">
+                <h3>راهنما</h3>
+                <div class="legend-item"><span class="event-dot holiday"></span> تعطیل رسمی</div>
+                <div class="legend-item"><span class="event-dot weekend"></span> جمعه</div>
+                <div class="legend-item"><span class="event-dot exam"></span> روز امتحان</div>
+                <div class="legend-item"><span class="event-dot event"></span> رویداد</div>
+                <div class="legend-item"><span class="event-dot extra-holiday"></span> تعطیلی اضافه</div>
+              </div>
+
+              <div class="side-card">
+                <h3>رویدادهای این ماه</h3>
+                <div id="calendar-upcoming"></div>
+              </div>
+
+              <div class="side-card">
+                <h3>رویدادهای هفته انتخاب شده</h3>
+                <div id="calendar-weekly"></div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-main">
+      <div class="footer-brand">
+        <div class="footer-title">هنرستان دارالفنون</div>
+        <div class="footer-sub">هنرستانی مدرن برای آموزش و تعلیم هنرجویان</div>
+        <div class="footer-contact">
+          <span>آدرس هنرستان</span>
+          <span>شماره هنرستان</span>
+          <span>ایمیل هنرستان</span>
+        </div>
+      </div>
+      <div class="footer-columns">
+        <div class="footer-col">
+          <div class="footer-col-title">پیوندهای سریع</div>
+          <a href="#">برنامه زنگ‌ها</a>
+          <a href="#">منوی غذا</a>
+          <a href="#">حمل‌ونقل</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">منابع</div>
+          <a href="#">مشاوره</a>
+          <a href="#">کتابخانه</a>
+          <a href="#">حمایت دانش‌آموزی</a>
+          <a href="#">ایمنی</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">مشارکت</div>
+          <a href="#">انجمن اولیا و مربیان</a>
+          <a href="#">داوطلبی</a>
+          <a href="#">شورای دانش‌آموزی</a>
+          <a href="#">فرصت‌های شغلی</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year"></span> تمامی حقوق این سایت متعلق به هنرستان دارالفنون می‌باشد</span>
+    </div>
+  </footer>
+
+  <script src="js/script.js"></script>
+  <script src="js/calendar.js"></script>
+</body>
+</html>
+
+
+
+

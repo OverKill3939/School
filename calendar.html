@@ -34,10 +34,10 @@
         <a href="#">تقویم</a>
         <a href="#">درباره</a>
       </nav>
-      <div class="header-actions">
-        <button class="cta cta-secondary">ورود</button>
-        <button class="cta">ثبت‌نام</button>
-      </div>
+      <div class="header-actions" id="auth-actions">
+    <a href="login.html" class="cta cta-secondary">ورود</a>
+    <button class="cta">ثبت‌نام</button>
+</div>
     </div>
   </header>
 
@@ -228,6 +228,38 @@
 
   <script src="js/script.js"></script>
   <script src="js/calendar.js"></script>
+<script>
+    function applySecurity() {
+        const authActions = document.getElementById('auth-actions');
+        const toggleEventBtn = document.getElementById('toggle-event-panel');
+        const token = localStorage.getItem('user_token');
+        const userName = localStorage.getItem('display_name');
+
+        if (token) {
+            if (authActions) {
+                authActions.innerHTML = `
+                    <span style="margin-left:10px; font-size:0.9rem;">${userName} عزیز، خوش آمدید</span>
+                    <button onclick="logout()" class="cta cta-secondary" style="background:#be123c;">خروج</button>
+                `;
+            }
+            if (toggleEventBtn) {
+                toggleEventBtn.style.display = 'block';
+            }
+        } else {
+            if (toggleEventBtn) {
+                toggleEventBtn.style.display = 'none';
+            }
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('user_token');
+        localStorage.removeItem('display_name');
+        window.location.reload();
+    }
+
+    document.addEventListener('DOMContentLoaded', applySecurity);
+</script>
 </body>
 </html>
 

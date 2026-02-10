@@ -32,10 +32,10 @@
           <a href="calendar.html">تقویم</a>
           <a href="#">درباره</a>
         </nav>
-        <div class="header-actions">
-          <button class="cta cta-secondary">ورود</button>
-          <button class="cta">ثبت‌نام</button>
-        </div>
+        <div class="header-actions" id="auth-actions">
+    <a href="login.html" class="cta cta-secondary">ورود</a>
+    <button class="cta">ثبت‌نام</button>
+</div>
       </div>
     </header>
 
@@ -80,5 +80,25 @@
 
     <script src="js/script.js"></script>
   </body>
+<script>
+  function updateAuthUI() {
+    const authActions = document.getElementById('auth-actions');
+    const token = localStorage.getItem('user_token');
+
+    if (token) {
+      authActions.innerHTML = `
+        <span style="margin-left: 10px; font-size: 0.9rem; color: var(--ink-soft);">خوش آمدید!</span>
+        <button onclick="handleLogout()" class="cta cta-secondary" style="background: #be123c; box-shadow: 0 12px 24px rgba(190, 18, 60, 0.2);">خروج</button>
+      `;
+    }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('user_token');
+    window.location.reload();
+  }
+
+  document.addEventListener('DOMContentLoaded', updateAuthUI);
+</script>
 </html>
 

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ورود | هنرستان دارالفنون</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <style>
+        .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 2rem; }
+        .login-card { background: var(--card); border: 1px solid var(--stroke); border-radius: 24px; padding: 2.5rem; width: 100%; max-width: 400px; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12); text-align: center; }
+        .form-group { margin-bottom: 1.2rem; text-align: right; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: var(--ink-soft); }
+        .form-control { width: 100%; padding: 0.9rem; border-radius: 12px; border: 1px solid var(--stroke); font-family: inherit; background: rgba(255, 255, 255, 0.7); }
+        .error-msg { color: #dc2626; font-size: 0.85rem; margin-top: 0.5rem; display: none; background: #fef2f2; padding: 0.5rem; border-radius: 8px; }
+    </style>
+</head>
+<body class="is-loaded">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="brand" style="justify-content: center; margin-bottom: 1.5rem;">
+                <div class="mark"><img src="img/daralfonon.jpg" alt="لوگو"></div>
+            </div>
+            <h1>خوش آمدید</h1>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>نام کاربری:</label>
+                    <input type="text" id="username" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label>رمز عبور:</label>
+                    <input type="password" id="password" class="form-control" required />
+                    <div id="errorBox" class="error-msg">اطلاعات وارد شده اشتباه است!</div>
+                </div>
+                <button type="submit" class="cta" style="width: 100%;">ورود به سیستم</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            
+            if (user === "admin" && pass === "123456") {
+                localStorage.setItem('user_token', 'token_' + btoa(user));
+                localStorage.setItem('display_name', user);
+                window.location.href = 'index.html';
+            } else {
+                document.getElementById('errorBox').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

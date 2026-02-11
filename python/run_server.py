@@ -236,7 +236,8 @@ class ServerApp:
             port = int(self.port_var.get().strip())
         except ValueError:
             port = 8000
-        url = f"http://localhost:{port}/"
+            # این جایی که وقتی رو دکمه کلیک میکنی برات باز می کنه
+        url = f"http://localhost:{port}/index.html"
         webbrowser.open(url)
 
     def _log(self, message):

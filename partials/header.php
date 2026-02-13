@@ -35,7 +35,7 @@ $user = current_user();
       </div>
       <nav class="nav">
         <a href="index.php" <?= $activeNav === 'home' ? 'style="color: var(--accent);"' : '' ?>>خانه</a>
-        <a href="#">دانش آموزان</a>
+        <a href="schedule.php">دانش آموزان</a>
         <a href="#">اخبار</a>
         <a href="calendar.php" <?= $activeNav === 'calendar' ? 'style="color: var(--accent);"' : '' ?>>تقویم</a>
         <a href="#">درباره</a>

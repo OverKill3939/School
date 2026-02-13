@@ -1,27 +1,28 @@
 <?php
-session_start();
-header('Content-Type: application/json');
+declare(strict_types=1);
 
-// فقط ادمین‌ها می‌توانند تاریخچه را ببینند
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'دسترسی غیرمجاز']);
-    exit;
-}
-
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../auth/helpers.php';
+require_once __DIR__ . '/../auth/db.php';
 require_once __DIR__ . '/../classes/Schedule.php';
 
+require_admin();
+header('Content-Type: application/json; charset=UTF-8');
+
+$limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+$limit = max(1, min(200, $limit));
+
 try {
-    $schedule = new Schedule($pdo);
-    $history = $schedule->getHistory(50);
-    
+    $schedule = new Schedule(get_db());
+    $history = $schedule->getHistory($limit);
+
     echo json_encode([
         'success' => true,
-        'data' => $history
-    ]);
-} catch (Exception $e) {
+        'data' => $history,
+    ], JSON_UNESCAPED_UNICODE);
+} catch (Throwable) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    echo json_encode([
+        'success' => false,
+        'error' => 'خطای داخلی سرور رخ داد.',
+    ], JSON_UNESCAPED_UNICODE);
 }
-?>

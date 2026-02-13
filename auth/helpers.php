@@ -3,15 +3,102 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 
+
+function app_config(): array
+{
+    static $config = null;
+
+    if (!is_array($config)) {
+        $config = require __DIR__ . '/config.php';
+    }
+
+    return $config;
+}
+
+function apply_app_timezone(): void
+{
+    static $applied = false;
+
+    if ($applied) {
+        return;
+    }
+
+    $config = app_config();
+    $timezone = (string)($config['app']['timezone'] ?? 'Asia/Tehran');
+    if ($timezone === '') {
+        $timezone = 'Asia/Tehran';
+    }
+
+    date_default_timezone_set($timezone);
+    $applied = true;
+}
+
+function request_expects_json(): bool
+{
+    $scriptName = strtolower(str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? '')));
+    if ($scriptName !== '' && str_contains($scriptName, '/api/')) {
+        return true;
+    }
+
+    $accept = strtolower((string)($_SERVER['HTTP_ACCEPT'] ?? ''));
+    if (str_contains($accept, 'application/json')) {
+        return true;
+    }
+
+    $requestedWith = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+    return $requestedWith === 'xmlhttprequest';
+}
+
+function json_error_response(int $status, string $message): void
+{
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=UTF-8');
+    }
+
+    http_response_code($status);
+    echo json_encode([
+        'ok' => false,
+        'message' => $message,
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+function login_url(): string
+{
+    $scriptName = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
+    $dir = trim(str_replace('\\', '/', dirname($scriptName)), '/');
+
+    if ($dir === '' || $dir === '.') {
+        return '/login.php';
+    }
+
+    if ($dir === 'api') {
+        return '/login.php';
+    }
+
+    if (str_ends_with($dir, '/api')) {
+        $dir = substr($dir, 0, -4);
+        $dir = trim($dir, '/');
+    }
+
+    if ($dir === '') {
+        return '/login.php';
+    }
+
+    return '/' . $dir . '/login.php';
+}
+
 function start_secure_session(): void
 {
+    apply_app_timezone();
+
     if (session_status() === PHP_SESSION_ACTIVE) {
         return;
     }
 
-    $config = require __DIR__ . '/config.php';
+    $config = app_config();
 
-    session_name($config['app']['session_name']);
+    session_name((string)$config['app']['session_name']);
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',
@@ -57,20 +144,33 @@ function current_user(): ?array
 
 function require_login(): void
 {
-    if (!is_logged_in()) {
-        header('Location: login.php');
-        exit;
+    if (is_logged_in()) {
+        return;
     }
+
+    if (request_expects_json()) {
+        json_error_response(401, 'Authentication required. Please login first.');
+    }
+
+    header('Location: ' . login_url());
+    exit;
 }
 
 function require_admin(): void
 {
     require_login();
+
     $user = current_user();
-    if (($user['role'] ?? '') !== 'admin') {
-        http_response_code(403);
-        exit('دسترسی مجاز نیست.');
+    if (($user['role'] ?? '') === 'admin') {
+        return;
     }
+
+    if (request_expects_json()) {
+        json_error_response(403, 'Admin access is required.');
+    }
+
+    http_response_code(403);
+    exit('Access denied.');
 }
 
 function logout_user(): void

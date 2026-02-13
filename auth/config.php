@@ -14,5 +14,6 @@ return [
     ],
     'app' => [
         'session_name' => 'school_session',
+        'timezone' => getenv('APP_TIMEZONE') ?: 'Asia/Tehran',
     ],
 ];

@@ -6,252 +6,467 @@ require_login();
 
 $pageTitle = 'برنامه هفتگی | هنرستان دارالفنون';
 $activeNav = 'schedule';
+$extraScripts = ['js/schedule.js?v=' . filemtime(__DIR__ . '/js/schedule.js')];
 
-// بررسی اینکه آیا کاربر ادمین است
 $user = current_user();
-$is_admin = ($user['role'] ?? '') === 'admin';
+$isAdmin = ($user['role'] ?? '') === 'admin';
 
-// بارگذاری دیتابیس
-require_once __DIR__ . '/auth/db.php';
-$pdo = get_db();
+$grades = [
+    1 => 'پایه دهم',
+    2 => 'پایه یازدهم',
+    3 => 'پایه دوازدهم',
+];
 
-// ایجاد جدول اگر وجود نداشته باشد
-try {
-    $pdo->exec(<<<'SQL'
-    CREATE TABLE IF NOT EXISTS schedules (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        grade INTEGER NOT NULL,
-        field TEXT NOT NULL,
-        day INTEGER NOT NULL,
-        hour INTEGER NOT NULL,
-        subject TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(grade, field, day, hour)
-    )
-    SQL);
-} catch (Exception $e) {
-    // جدول قبلاً وجود دارد
-}
-
-// دریافت برنامه‌ها
-$schedules_data = [];
-try {
-    $stmt = $pdo->prepare('SELECT * FROM schedules ORDER BY grade, field, day, hour');
-    $stmt->execute();
-    $schedules = $stmt->fetchAll();
-    
-    foreach ($schedules as $schedule) {
-        $key = $schedule['grade'] . '_' . $schedule['field'];
-        $schedules_data[$key][$schedule['day']][$schedule['hour']] = $schedule['subject'];
-    }
-} catch (Exception $e) {
-    $schedules_data = [];
-}
+$fields = ['کامپیوتر', 'الکترونیک', 'برق'];
+$hours = ['زنگ اول', 'زنگ دوم', 'زنگ سوم', 'زنگ چهارم'];
+$days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه'];
 
 require __DIR__ . '/partials/header.php';
 ?>
 
-<main style="width:min(1120px,92vw);margin:0 auto 3rem;">
-    <div style="background:var(--card);border:1px solid var(--stroke);border-radius:24px;padding:2rem;box-shadow:0 20px 45px rgba(15,23,42,0.12);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h1 style="margin: 0;">برنامه هفتگی</h1>
-            <?php if ($is_admin): ?>
-                <div style="background: #d4edda; color: #155724; padding: 0.75rem 1.5rem; border-radius: 8px; border: 1px solid #c3e6cb;">
-                    ✓ شما می‌توانید برنامه را ویرایش کنید
-                </div>
-            <?php else: ?>
-                <div style="background: #cfe2ff; color: #084298; padding: 0.75rem 1.5rem; border-radius: 8px; border: 1px solid #b6d4fe;">
-                    ℹ شما فقط می‌توانید برنامه را مشاهده کنید
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <!-- Tabs for grades -->
-        <div style="margin-bottom: 2rem;">
-            <div style="display: flex; gap: 1rem; border-bottom: 2px solid var(--stroke); margin-bottom: 2rem; overflow-x: auto;">
-                <?php for ($g = 1; $g <= 3; $g++): ?>
-                    <button class="grade-tab" onclick="switchGrade(<?php echo $g; ?>)" 
-                            style="padding: 1rem; cursor: pointer; background: none; border: none; border-bottom: 3px solid transparent; color: var(--ink); transition: all 0.3s; <?php echo ($g === 1) ? 'border-bottom-color: var(--accent); color: var(--accent); font-weight: bold;' : ''; ?>"
-                            data-grade="<?php echo $g; ?>">
-                        <?php echo ['', 'پایه اول', 'پایه دوم', 'پایه سوم'][$g]; ?>
-                    </button>
-                <?php endfor; ?>
-            </div>
-
-            <!-- Grade content -->
-            <?php for ($g = 1; $g <= 3; $g++): ?>
-                <div id="grade-<?php echo $g; ?>" class="grade-content" style="<?php echo ($g === 1) ? 'display: block;' : 'display: none;'; ?>">
-                    <!-- Field tabs -->
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
-                        <?php 
-                        $fields = ['کامپیوتر', 'الکترونیک', 'برق'];
-                        foreach ($fields as $f_idx => $field): 
-                        ?>
-                            <button class="field-tab" onclick="switchField(<?php echo $g; ?>, <?php echo $f_idx; ?>)" 
-                                    style="padding: 0.75rem 1.5rem; cursor: pointer; background: <?php echo ($f_idx === 0) ? 'var(--accent)' : 'var(--stroke)'; ?>; color: <?php echo ($f_idx === 0) ? 'white' : 'var(--ink)'; ?>; border: none; border-radius: 8px; transition: all 0.3s; font-weight: 500;"
-                                    data-grade="<?php echo $g; ?>" data-field="<?php echo $f_idx; ?>">
-                                <?php echo $field; ?>
-                            </button>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <!-- Field content -->
-                    <?php foreach ($fields as $f_idx => $field): ?>
-                        <div id="grade-<?php echo $g; ?>-field-<?php echo $f_idx; ?>" class="field-content" style="<?php echo ($f_idx === 0) ? 'display: block;' : 'display: none;'; ?>">
-                            <form method="POST" action="api/schedule_save.php" style="margin-top: 1.5rem;">
-                                <input type="hidden" name="grade" value="<?php echo $g; ?>">
-                                <input type="hidden" name="field" value="<?php echo $field; ?>">
-
-                                <div style="overflow-x: auto;">
-                                    <table style="width: 100%; border-collapse: collapse;">
-                                        <thead>
-                                            <tr style="background-color: var(--accent); color: white;">
-                                                <th style="padding: 1rem; text-align: center; width: 12%; border: 1px solid var(--stroke);">روز</th>
-                                                <?php 
-                                                $hours = ['زنگ اول', 'زنگ دوم', 'زنگ سوم', 'زنگ چهارم'];
-                                                foreach ($hours as $h_idx => $hour): 
-                                                ?>
-                                                    <th style="padding: 1rem; text-align: center; border: 1px solid var(--stroke);">
-                                                        <?php echo $hour; ?>
-                                                    </th>
-                                                <?php endforeach; ?>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php 
-                                            $days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه'];
-                                            $key = $g . '_' . $field;
-                                            
-                                            foreach ($days as $d_idx => $day): 
-                                            ?>
-                                                <tr>
-                                                    <td style="padding: 1rem; text-align: center; background-color: var(--card-secondary); font-weight: bold; border: 1px solid var(--stroke);">
-                                                        <?php echo $day; ?>
-                                                    </td>
-                                                    <?php foreach ($hours as $h_idx => $hour): 
-                                                        $cell_value = $schedules_data[$key][$d_idx][$h_idx] ?? '';
-                                                    ?>
-                                                        <td style="padding: 0; border: 1px solid var(--stroke);">
-                                                            <?php if ($is_admin): ?>
-                                                                <input type="text" 
-                                                                       name="schedule[<?php echo $g; ?>][<?php echo $field; ?>][<?php echo $d_idx; ?>][<?php echo $h_idx; ?>]"
-                                                                       value="<?php echo htmlspecialchars($cell_value, ENT_QUOTES, 'UTF-8'); ?>"
-                                                                       placeholder="درس"
-                                                                       style="width: 100%; padding: 0.75rem; border: none; text-align: center; direction: rtl; font-size: 0.95rem; min-height: 50px; box-sizing: border-box;">
-                                                            <?php else: ?>
-                                                                <div style="padding: 0.75rem; text-align: center; min-height: 50px; display: flex; align-items: center; justify-content: center;">
-                                                                    <?php echo htmlspecialchars($cell_value, ENT_QUOTES, 'UTF-8'); ?>
-                                                                </div>
-                                                            <?php endif; ?>
-                                                        </td>
-                                                    <?php endforeach; ?>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <?php if ($is_admin): ?>
-                                    <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
-                                        <button type="submit" style="padding: 0.75rem 2rem; background-color: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem;">
-                                            💾 ذخیره تغییرات
-                                        </button>
-                                    </div>
-                                <?php endif; ?>
-                            </form>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endfor; ?>
-        </div>
+<main class="schedule-page">
+  <section class="schedule-shell">
+    <div class="schedule-head">
+      <h1>برنامه هفتگی</h1>
+      <?php if ($isAdmin): ?>
+        <p class="schedule-badge schedule-badge--admin">شما مدیر هستید و امکان ویرایش برنامه را دارید.</p>
+      <?php else: ?>
+        <p class="schedule-badge schedule-badge--user">شما فقط مجاز به مشاهده برنامه هستید.</p>
+      <?php endif; ?>
     </div>
+
+    <div class="grade-tabs" role="tablist" aria-label="انتخاب پایه">
+      <?php foreach ($grades as $gradeValue => $gradeLabel): ?>
+        <button
+          class="grade-tab<?= $gradeValue === 1 ? ' is-active' : '' ?>"
+          type="button"
+          data-grade="<?= $gradeValue ?>"
+          role="tab"
+          aria-selected="<?= $gradeValue === 1 ? 'true' : 'false' ?>"
+        >
+          <?= htmlspecialchars($gradeLabel, ENT_QUOTES, 'UTF-8') ?>
+        </button>
+      <?php endforeach; ?>
+    </div>
+
+    <?php foreach ($grades as $gradeValue => $gradeLabel): ?>
+      <section id="grade-<?= $gradeValue ?>" class="grade-content" style="<?= $gradeValue === 1 ? 'display:block;' : 'display:none;' ?>">
+        <div class="field-tabs" role="tablist" aria-label="انتخاب رشته">
+          <?php foreach ($fields as $fieldIndex => $fieldName): ?>
+            <button
+              class="field-tab<?= $fieldIndex === 0 ? ' is-active' : '' ?>"
+              type="button"
+              data-grade="<?= $gradeValue ?>"
+              data-field-index="<?= $fieldIndex ?>"
+            >
+              <?= htmlspecialchars($fieldName, ENT_QUOTES, 'UTF-8') ?>
+            </button>
+          <?php endforeach; ?>
+        </div>
+
+        <?php foreach ($fields as $fieldIndex => $fieldName): ?>
+          <div id="grade-<?= $gradeValue ?>-field-<?= $fieldIndex ?>" class="field-content" style="<?= $fieldIndex === 0 ? 'display:block;' : 'display:none;' ?>">
+            <form
+              class="schedule-grid-form"
+              method="post"
+              action="api/schedule_save.php"
+              data-grade="<?= $gradeValue ?>"
+              data-field-index="<?= $fieldIndex ?>"
+              data-is-admin="<?= $isAdmin ? '1' : '0' ?>"
+            >
+              <input type="hidden" name="grade" value="<?= $gradeValue ?>">
+              <input type="hidden" name="field" value="<?= htmlspecialchars($fieldName, ENT_QUOTES, 'UTF-8') ?>">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
+
+              <div class="schedule-table-wrap">
+                <table class="schedule-table">
+                  <thead>
+                    <tr>
+                      <th>روز</th>
+                      <?php foreach ($hours as $hourLabel): ?>
+                        <th><?= htmlspecialchars($hourLabel, ENT_QUOTES, 'UTF-8') ?></th>
+                      <?php endforeach; ?>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($days as $dayIndex => $dayLabel): ?>
+                      <tr>
+                        <td class="day-cell"><?= htmlspecialchars($dayLabel, ENT_QUOTES, 'UTF-8') ?></td>
+                        <?php foreach ($hours as $hourIndex => $unusedHour): ?>
+                          <td>
+                            <?php if ($isAdmin): ?>
+                              <input
+                                class="schedule-cell-input"
+                                type="text"
+                                data-day="<?= $dayIndex ?>"
+                                data-hour="<?= $hourIndex ?>"
+                                placeholder="عنوان درس"
+                              >
+                            <?php else: ?>
+                              <div class="schedule-view-cell" data-day="<?= $dayIndex ?>" data-hour="<?= $hourIndex ?>">-</div>
+                            <?php endif; ?>
+                          </td>
+                        <?php endforeach; ?>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+
+              <p class="schedule-form-message" aria-live="polite"></p>
+
+              <?php if ($isAdmin): ?>
+                <div class="schedule-actions">
+                  <button class="schedule-save-btn" type="submit">ذخیره تغییرات</button>
+                </div>
+              <?php endif; ?>
+            </form>
+          </div>
+        <?php endforeach; ?>
+      </section>
+    <?php endforeach; ?>
+  </section>
 </main>
 
 <style>
-    button:hover {
-        opacity: 0.9;
+  .schedule-page {
+    width: min(1120px, 92vw);
+    margin: 0 auto 3rem;
+    animation: fadeIn 0.5s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .schedule-shell {
+    background: var(--card);
+    border: 1px solid var(--stroke);
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+    animation: slideUp 0.6s ease 0.2s forwards;
+    opacity: 0;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .schedule-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+
+  .schedule-head h1 {
+    margin: 0;
+  }
+
+  .schedule-badge {
+    margin: 0;
+    padding: 0.7rem 1rem;
+    border-radius: 12px;
+    border: 1px solid;
+    font-size: 0.92rem;
+  }
+
+  .schedule-badge--admin {
+    background: #d4edda;
+    color: #155724;
+    border-color: #c3e6cb;
+  }
+
+  .schedule-badge--user {
+    background: #cfe2ff;
+    color: #084298;
+    border-color: #b6d4fe;
+  }
+
+  .grade-tabs {
+    display: flex;
+    gap: 0.75rem;
+    border-bottom: 2px solid var(--stroke);
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    animation: fadeIn 0.5s ease 0.4s forwards;
+    opacity: 0;
+  }
+
+  .grade-content {
+    animation: fadeIn 0.5s ease 0.6s forwards;
+    opacity: 0;
+  }
+
+  .grade-tab {
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--ink-soft);
+    transition: all 0.2s ease;
+    font: inherit;
+    white-space: nowrap;
+  }
+
+  .grade-tab:hover,
+  .grade-tab.is-active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 700;
+  }
+
+  .grade-tab:hover {
+    color: var(--accent);
+  }
+
+  .field-tabs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+    animation: fadeIn 0.5s ease 0.8s forwards;
+    opacity: 0;
+  }
+
+  .field-content {
+    animation: fadeIn 0.5s ease 1s forwards;
+    opacity: 0;
+  }
+
+  .field-tab {
+    padding: 0.7rem 1.2rem;
+    cursor: pointer;
+    background: var(--stroke);
+    color: var(--ink);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    font: inherit;
+    font-weight: 500;
+  }
+
+  .field-tab:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .field-tab.is-active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .schedule-table-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  .schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .schedule-table th {
+    padding: 0.9rem;
+    text-align: center;
+    border: 1px solid var(--stroke);
+    background: var(--accent);
+    color: #fff;
+    min-width: 120px;
+  }
+
+  .schedule-table td {
+    border: 1px solid var(--stroke);
+    padding: 0;
+    transition: background-color 0.2s;
+  }
+
+  .schedule-table tbody tr:hover td {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
+  .schedule-table .day-cell {
+    padding: 0.9rem;
+    min-width: 110px;
+    text-align: center;
+    background: var(--card-secondary);
+    font-weight: 700;
+  }
+
+  .schedule-cell-input,
+  .schedule-view-cell {
+    width: 100%;
+    min-height: 52px;
+    padding: 0.75rem;
+    text-align: center;
+    box-sizing: border-box;
+    direction: rtl;
+  }
+
+  .schedule-cell-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .schedule-cell-input::placeholder {
+    color: #9ca3af;
+    font-style: italic;
+  }
+
+  .schedule-cell-input:focus {
+    background-color: rgba(0, 0, 0, 0.03);
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  .schedule-view-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .schedule-form-message {
+    margin: 0.9rem 0 0;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    min-height: 1.4rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    animation: slideIn 0.3s ease;
+  }
+
+  .schedule-form-message.success {
+    background: #dcfce7;
+    border-right: 4px solid #22c55e;
+    color: #166534;
+  }
+
+  .schedule-form-message.error {
+    background: #fee2e2;
+    border-right: 4px solid #ef4444;
+    color: #991b1b;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .schedule-actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.75rem;
+    animation: fadeIn 0.5s ease 1.2s forwards;
+    opacity: 0;
+  }
+
+  .schedule-save-btn {
+    padding: 0.75rem 2rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 700;
+    font: inherit;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .schedule-save-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .schedule-save-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .schedule-grid-form.is-loading {
+    opacity: 0.75;
+    pointer-events: none;
+  }
+
+  .schedule-save-btn[disabled] {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  @media (max-width: 768px) {
+    .schedule-shell {
+      padding: 1rem;
+      border-radius: 16px;
     }
 
-    .grade-tab:hover {
-        color: var(--accent);
+    .schedule-head {
+      margin-bottom: 1.2rem;
     }
 
-    .field-tab:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    .grade-tabs {
+      gap: 0.5rem;
     }
 
-    input[type="text"]:focus {
-        outline: 2px solid var(--accent);
-        outline-offset: -2px;
+    .grade-tab {
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
     }
 
-    table {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    .field-tab {
+      padding: 0.6rem 1rem;
+      font-size: 0.9rem;
     }
 
-    @media (max-width: 768px) {
-        table {
-            font-size: 0.85rem;
-        }
-        
-        th, td {
-            padding: 0.5rem !important;
-        }
+    .schedule-table th,
+    .schedule-table .day-cell {
+      min-width: 88px;
+      font-size: 0.85rem;
+      padding: 0.65rem;
     }
+
+    .schedule-cell-input,
+    .schedule-view-cell {
+      min-height: 46px;
+      padding: 0.55rem;
+      font-size: 0.9rem;
+    }
+
+    .schedule-save-btn {
+      padding: 0.65rem 1.5rem;
+      font-size: 0.95rem;
+    }
+  }
 </style>
-
-<script>
-function switchGrade(grade) {
-    // مخفی کردن همه پایه‌ها
-    for (let g = 1; g <= 3; g++) {
-        const element = document.getElementById('grade-' + g);
-        if (element) {
-            element.style.display = 'none';
-        }
-    }
-    
-    // نمایش پایه انتخاب شده
-    document.getElementById('grade-' + grade).style.display = 'block';
-    
-    // بروزرسانی تب‌ها
-    document.querySelectorAll('.grade-tab').forEach(tab => {
-        if (parseInt(tab.dataset.grade) === grade) {
-            tab.style.borderBottomColor = 'var(--accent)';
-            tab.style.color = 'var(--accent)';
-            tab.style.fontWeight = 'bold';
-        } else {
-            tab.style.borderBottomColor = 'transparent';
-            tab.style.color = 'var(--ink)';
-            tab.style.fontWeight = 'normal';
-        }
-    });
-}
-
-function switchField(grade, field) {
-    // مخفی کردن همه رشته‌ها
-    for (let f = 0; f < 3; f++) {
-        const element = document.getElementById('grade-' + grade + '-field-' + f);
-        if (element) {
-            element.style.display = 'none';
-        }
-    }
-    
-    // نمایش رشته انتخاب شده
-    document.getElementById('grade-' + grade + '-field-' + field).style.display = 'block';
-    
-    // بروزرسانی تب‌ها
-    document.querySelectorAll('.field-tab[data-grade="' + grade + '"]').forEach(tab => {
-        if (parseInt(tab.dataset.field) === field) {
-            tab.style.background = 'var(--accent)';
-            tab.style.color = 'white';
-        } else {
-            tab.style.background = 'var(--stroke)';
-            tab.style.color = 'var(--ink)';
-        }
-    });
-}
-</script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>

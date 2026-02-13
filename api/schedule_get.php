@@ -1,46 +1,45 @@
 <?php
-session_start();
-header('Content-Type: application/json');
+declare(strict_types=1);
 
-// بررسی آیا کاربر وارد شده است
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'شما وارد سیستم نشده‌اید']);
+require_once __DIR__ . '/../auth/helpers.php';
+require_once __DIR__ . '/../auth/db.php';
+require_once __DIR__ . '/../classes/Schedule.php';
+
+require_login();
+header('Content-Type: application/json; charset=UTF-8');
+
+$grade = isset($_GET['grade']) ? (int)$_GET['grade'] : 0;
+$field = trim((string)($_GET['field'] ?? ''));
+$allowedFields = ['کامپیوتر', 'الکترونیک', 'برق'];
+
+if ($grade < 1 || $grade > 3 || !in_array($field, $allowedFields, true)) {
+    http_response_code(422);
+    echo json_encode([
+        'success' => false,
+        'error' => 'اطلاعات ورودی معتبر نیست.',
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../classes/Schedule.php';
-
 try {
-    $grade = (int)($_GET['grade'] ?? 0);
-    $field = $_GET['field'] ?? '';
-    
-    if ($grade <= 0 || empty($field)) {
-        echo json_encode(['success' => false, 'error' => 'اطلاعات نامعتبر']);
-        exit;
-    }
-    
-    $schedule = new Schedule($pdo);
-    $schedules = $schedule->getSchedule($grade, $field);
-    
-    // تنظیم داده‌ها در فرمت مناسب
+    $schedule = new Schedule(get_db());
+    $rows = $schedule->getSchedule($grade, $field);
+
     $formatted = [];
-    foreach ($schedules as $item) {
-        $day = $item['day'];
-        $hour = $item['hour'];
-        $formatted[$day][$hour] = $item['subject'];
+    foreach ($rows as $item) {
+        $day = (int)$item['day'];
+        $hour = (int)$item['hour'];
+        $formatted[$day][$hour] = (string)$item['subject'];
     }
-    
+
     echo json_encode([
         'success' => true,
-        'data' => $formatted
-    ]);
-} catch (Exception $e) {
+        'data' => $formatted,
+    ], JSON_UNESCAPED_UNICODE);
+} catch (Throwable) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error' => 'خطای سرور: ' . $e->getMessage()
-    ]);
+        'error' => 'خطای داخلی سرور رخ داد.',
+    ], JSON_UNESCAPED_UNICODE);
 }
-?>

@@ -35,7 +35,12 @@ $user = current_user();
       </div>
       <nav class="nav">
         <a href="index.php" <?= $activeNav === 'home' ? 'style="color: var(--accent);"' : '' ?>>خانه</a>
-        <a href="schedule.php">دانش آموزان</a>
+        <details class="students-menu <?= in_array($activeNav, ['schedule'], true) ? 'is-active' : '' ?>">
+          <summary>دانش آموزان</summary>
+          <div class="students-menu-list">
+            <a href="schedule.php" class="schedule <?= $activeNav === 'schedule' ? 'active' : '' ?>">برنامه هفتگی</a>
+          </div>
+        </details>
         <a href="#">اخبار</a>
         <a href="calendar.php" <?= $activeNav === 'calendar' ? 'style="color: var(--accent);"' : '' ?>>تقویم</a>
         <a href="#">درباره</a>
@@ -43,8 +48,8 @@ $user = current_user();
         <details class="admin-menu <?= in_array($activeNav, ['logs', 'users'], true) ? 'is-active' : '' ?>">
           <summary>مدیریت</summary>
           <div class="admin-menu-list">
-            <a href="logs.php" <?= $activeNav === 'logs' ? 'class="active"' : '' ?>>لاگ</a>
-            <a href="users.php" <?= $activeNav === 'users' ? 'class="active"' : '' ?>>کاربران</a>
+            <a href="logs.php" class="logs <?= $activeNav === 'logs' ? 'active' : '' ?>">لاگ</a>
+            <a href="users.php" class="users <?= $activeNav === 'users' ? 'active' : '' ?>">کاربران</a>
           </div>
         </details>
         <?php endif; ?>
@@ -57,8 +62,8 @@ $user = current_user();
               <img src="img/waguri111.jpg" alt="" aria-hidden="true" />
             </summary>
             <div class="profile-menu-list">
-              <a href="#" class="profile-item">تنظیمات</a>
-              <a href="logout.php" class="profile-item danger">خروج</a>
+              <a href="#" class="profile-item settings">تنظیمات</a>
+              <a href="logout.php" class="profile-item logout danger">خروج</a>
             </div>
           </details>
         <?php else: ?>

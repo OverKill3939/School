@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #f8fbff;
   --surface: #ffffff;
   --panel: rgba(255, 255, 255, 0.92);
@@ -26,7 +26,7 @@ body {
   margin: 0;
   font-family: var(--font);
   color: var(--text);
-  background: linear-gradient(180deg, #f8fbff 0%, #dbe8ff 100%);
+  background: transparent;
   line-height: 1.7;
 }
 
@@ -535,6 +535,10 @@ body.is-loaded .page {
   .calendar-action-buttons .btn {
     width: 100%;
   }
+  .calendar-action-buttons .btn.add-event-icon-btn {
+    width: 44px;
+    flex: 0 0 44px;
+  }
   :root {
     --cell-size: 68px;
     --cell-gap: 6px;
@@ -558,15 +562,62 @@ body.is-loaded .page {
 .calendar-action-buttons {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .calendar-action-buttons .btn {
   min-height: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.calendar-action-buttons .btn.ghost {
+  padding-inline: 1.2rem;
+  padding-block: 0;
+}
+
+.add-event-icon-btn {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.1);
+  flex: 0 0 44px;
+}
+
+.add-event-icon-btn:hover {
+  background: rgba(37, 99, 235, 0.08) !important;
+  border-color: rgba(37, 99, 235, 0.4);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+}
+
+.add-event-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.add-event-icon-minus {
+  display: none;
+}
+
+.add-event-icon-btn.is-open .add-event-icon-plus {
+  display: none;
+}
+
+.add-event-icon-btn.is-open .add-event-icon-minus {
+  display: block;
 }
 
 .event-panel {
@@ -652,6 +703,13 @@ body.is-loaded .page {
   background: rgba(37, 99, 235, 0.06);
 }
 
+.event-item-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .event-meta {
   display: grid;
   gap: 4px;
@@ -698,6 +756,30 @@ body.is-loaded .page {
 .btn.small {
   padding: 6px 12px;
   font-size: 0.8rem;
+}
+
+.btn.ghost.small.edit {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.35);
+  color: #1d4ed8;
+}
+
+.btn.ghost.small.edit:hover {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: rgba(37, 99, 235, 0.55);
+  color: #1e40af;
+}
+
+.btn.ghost.small.danger {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #b91c1c;
+}
+
+.btn.ghost.small.danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #991b1b;
 }
 
 .calendar-day.exam {

@@ -1,23 +1,15 @@
-const yearEl = document.getElementById("year");
+const yearEl = document.getElementById('year');
 if (yearEl) {
   yearEl.textContent = new Date().getFullYear();
 }
 
-window.addEventListener("load", () => {
-  document.body.classList.add("is-loaded");
-});
-function checkAuth() {
-    const token = localStorage.getItem('user_token');
-    if (!token && !window.location.href.includes('login.html')) {
-        window.location.href = 'login.html';
-    }
-}
+const updateScrolledState = () => {
+  document.body.classList.toggle('is-scrolled', window.scrollY > 8);
+};
 
-function logout() {
-    localStorage.removeItem('user_token');
-    window.location.href = 'login.html';
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    document.body.classList.add('is-loaded');
+window.addEventListener('load', () => {
+  document.body.classList.add('is-loaded');
+  updateScrolledState();
 });
+
+window.addEventListener('scroll', updateScrolledState, { passive: true });

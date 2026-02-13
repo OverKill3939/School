@@ -21,6 +21,11 @@ const eventTypeInput = document.getElementById('event-type');
 const eventNotesInput = document.getElementById('event-notes');
 const eventResetButton = document.getElementById('event-reset');
 const eventError = document.getElementById('event-error');
+const eventPanelTitle = document.getElementById('event-panel-title');
+const eventPanelHint = document.getElementById('event-panel-hint');
+const eventSubmitButton = document.getElementById('event-submit');
+const canManageEvents = window.CALENDAR_CAN_MANAGE_EVENTS === true;
+const calendarEventsApi = window.CALENDAR_EVENTS_API || 'api/calendar-events.php';
 
 const monthNames = [
   'فروردین',
@@ -56,6 +61,7 @@ const typeOrder = {
 };
 
 const customTypes = new Set(['exam', 'event', 'extra-holiday']);
+const LEGACY_CUSTOM_EVENTS_KEY = 'calendar-custom-events-v1';
 
 const escapeHtml = (value) =>
   String(value)
@@ -227,6 +233,7 @@ let currentMonth = today.jm;
 let selectedDay = null;
 let forcedDay = null;
 let activeTypes = new Set(['holiday', 'weekend', 'exam', 'event', 'extra-holiday']);
+let editingEventId = null;
 
 const syncFilterChips = () => {
   filterInputs.forEach((input) => {
@@ -295,8 +302,6 @@ const getMonthHolidays = async (year, month) => {
   return { events: monthEvents, status: 'ok' };
 };
 
-const CUSTOM_EVENTS_KEY = 'calendar-custom-events-v1';
-
 const normalizeCustomEvent = (item) => ({
   id: String(item.id ?? ''),
   year: Number(item.year),
@@ -308,38 +313,170 @@ const normalizeCustomEvent = (item) => ({
   time: 'تمام روز'
 });
 
-const loadCustomEvents = () => {
+let customEventsCacheYear = null;
+let customEventsCacheMonth = null;
+let customEventsCache = [];
+
+const getCustomEventsForMonth = (year, month) => {
+  if (customEventsCacheYear !== year || customEventsCacheMonth !== month) {
+    return [];
+  }
+  return [...customEventsCache];
+};
+
+const loadCustomEventsForMonth = async (year, month) => {
   try {
-    const raw = localStorage.getItem(CUSTOM_EVENTS_KEY);
+    const response = await fetch(`${calendarEventsApi}?year=${encodeURIComponent(year)}&month=${encodeURIComponent(month)}`, { cache: 'no-store' });
+    if (!response.ok) {
+      customEventsCacheYear = year;
+      customEventsCacheMonth = month;
+      customEventsCache = [];
+      return [];
+    }
+
+    const data = await response.json();
+    const list = Array.isArray(data.events)
+      ? data.events
+          .map(normalizeCustomEvent)
+          .filter((item) => item.id && customTypes.has(item.type))
+      : [];
+
+    customEventsCacheYear = year;
+    customEventsCacheMonth = month;
+    customEventsCache = list;
+    return [...customEventsCache];
+  } catch {
+    customEventsCacheYear = year;
+    customEventsCacheMonth = month;
+    customEventsCache = [];
+    return [];
+  }
+};
+
+const addCustomEvent = async (item) => {
+  const response = await fetch(calendarEventsApi, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      year: item.year,
+      month: item.month,
+      day: item.day,
+      title: item.title,
+      type: item.type,
+      notes: item.notes || ''
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok || !data.event) {
+    throw new Error(data.message || 'عملیات رویداد ناموفق بود.');
+  }
+
+  const saved = normalizeCustomEvent(data.event);
+  if (saved.year === customEventsCacheYear && saved.month === customEventsCacheMonth) {
+    customEventsCache.push(saved);
+  }
+
+  return saved;
+};
+
+const updateCustomEvent = async (item) => {
+  const response = await fetch(calendarEventsApi, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: item.id,
+      year: item.year,
+      month: item.month,
+      day: item.day,
+      title: item.title,
+      type: item.type,
+      notes: item.notes || ''
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok || !data.event) {
+    throw new Error(data.message || 'عملیات ویرایش رویداد ناموفق بود.');
+  }
+
+  const updated = normalizeCustomEvent(data.event);
+  customEventsCache = customEventsCache.map((entry) =>
+    entry.id === String(updated.id) ? updated : entry
+  );
+
+  return updated;
+};
+
+const removeCustomEvent = async (id) => {
+  const response = await fetch(`${calendarEventsApi}?id=${encodeURIComponent(id)}`, {
+    method: 'DELETE'
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) {
+    throw new Error(data.message || 'عملیات رویداد ناموفق بود.');
+  }
+
+  customEventsCache = customEventsCache.filter((item) => item.id !== String(id));
+};
+
+
+let legacyMigrationDone = false;
+
+const normalizeLegacyCustomEvent = (item) => ({
+  year: Number(item.year),
+  month: Number(item.month),
+  day: Number(item.day),
+  title: String(item.title ?? '').trim(),
+  type: String(item.type ?? 'event'),
+  notes: String(item.notes ?? '')
+});
+
+const readLegacyCustomEvents = () => {
+  try {
+    const raw = localStorage.getItem(LEGACY_CUSTOM_EVENTS_KEY);
     if (!raw) return [];
-    const data = JSON.parse(raw);
-    if (!Array.isArray(data)) return [];
-    return data.map(normalizeCustomEvent).filter((item) => item.id && customTypes.has(item.type));
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map(normalizeLegacyCustomEvent)
+      .filter((item) => item.year >= 1300 && item.month >= 1 && item.month <= 12 && item.day >= 1 && item.day <= 31)
+      .filter((item) => item.title.length > 0)
+      .filter((item) => customTypes.has(item.type));
   } catch {
     return [];
   }
 };
 
-const saveCustomEvents = (items) => {
-  try {
-    localStorage.setItem(CUSTOM_EVENTS_KEY, JSON.stringify(items));
-  } catch {
-    return;
+const migrateLegacyCustomEvents = async () => {
+  if (legacyMigrationDone || !canManageEvents) return;
+  legacyMigrationDone = true;
+
+  const legacyEvents = readLegacyCustomEvents();
+  if (legacyEvents.length === 0) return;
+
+  let successCount = 0;
+  for (const item of legacyEvents) {
+    try {
+      await addCustomEvent(item);
+      successCount += 1;
+    } catch {
+      // ignore per-item migration failure and continue
+    }
   }
-};
 
-const getCustomEventsForMonth = (year, month) =>
-  loadCustomEvents().filter((item) => item.year === year && item.month === month);
-
-const addCustomEvent = (item) => {
-  const current = loadCustomEvents();
-  current.push(item);
-  saveCustomEvents(current);
-};
-
-const removeCustomEvent = (id) => {
-  const current = loadCustomEvents().filter((item) => item.id !== id);
-  saveCustomEvents(current);
+  if (successCount > 0) {
+    try {
+      localStorage.removeItem(LEGACY_CUSTOM_EVENTS_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  }
 };
 
 const setFormDefaults = (day = today.jd) => {
@@ -361,6 +498,51 @@ const showFormError = (message) => {
     eventError.textContent = '';
     eventError.hidden = true;
   }
+};
+
+const setEventFormMode = (mode = 'create') => {
+  const isEditMode = mode === 'edit';
+  if (eventPanelTitle) eventPanelTitle.textContent = isEditMode ? 'ویرایش رویداد' : 'ثبت رویداد جدید';
+  if (eventPanelHint) eventPanelHint.textContent = isEditMode
+    ? 'اطلاعات رویداد را تغییر دهید و روی ذخیره تغییرات بزنید.'
+    : 'این رویدادها در پایگاه‌داده ذخیره می‌شوند.';
+  if (eventSubmitButton) eventSubmitButton.textContent = isEditMode ? 'ذخیره تغییرات' : 'ثبت رویداد';
+  if (eventResetButton) eventResetButton.textContent = isEditMode ? 'انصراف ویرایش' : 'پاک کردن فرم';
+};
+
+const openEventPanel = () => {
+  if (!eventPanel || !toggleEventPanel) return;
+  eventPanel.hidden = false;
+  toggleEventPanel.classList.add('is-open');
+  toggleEventPanel.setAttribute('aria-label', 'بستن فرم');
+  toggleEventPanel.setAttribute('title', 'بستن فرم');
+
+  const plusIcon = toggleEventPanel.querySelector('.add-event-icon-plus');
+  const minusIcon = toggleEventPanel.querySelector('.add-event-icon-minus');
+  if (plusIcon) plusIcon.style.display = 'none';
+  if (minusIcon) minusIcon.style.display = 'block';
+};
+
+const enterEditMode = (item) => {
+  if (!item || !eventYearInput || !eventMonthInput || !eventDayInput || !eventTitleInput || !eventTypeInput) return;
+
+  editingEventId = String(item.id);
+  eventYearInput.value = item.year;
+  eventMonthInput.value = String(item.month);
+  eventDayInput.value = String(item.day);
+  eventTitleInput.value = item.title || '';
+  eventTypeInput.value = item.type || 'event';
+  if (eventNotesInput) eventNotesInput.value = item.notes || '';
+
+  setEventFormMode('edit');
+  openEventPanel();
+  showFormError('');
+  eventTitleInput.focus();
+};
+
+const exitEditMode = () => {
+  editingEventId = null;
+  setEventFormMode('create');
 };
 
 const renderCustomEventsList = (year, month) => {
@@ -393,15 +575,28 @@ const renderCustomEventsList = (year, month) => {
     meta.appendChild(title);
     meta.appendChild(dateText);
     meta.appendChild(badge);
-
-    const delButton = document.createElement('button');
-    delButton.type = 'button';
-    delButton.className = 'btn ghost small';
-    delButton.textContent = 'حذف';
-    delButton.setAttribute('data-event-delete', item.id);
-
     row.appendChild(meta);
-    row.appendChild(delButton);
+    if (canManageEvents) {
+      const actions = document.createElement('div');
+      actions.className = 'event-item-actions';
+
+      const editButton = document.createElement('button');
+      editButton.type = 'button';
+      editButton.className = 'btn ghost small edit';
+      editButton.textContent = 'ویرایش';
+      editButton.setAttribute('data-event-edit', item.id);
+
+      const delButton = document.createElement('button');
+      delButton.type = 'button';
+      delButton.className = 'btn ghost small danger';
+      delButton.textContent = 'حذف';
+      delButton.setAttribute('data-event-delete', item.id);
+
+      actions.appendChild(editButton);
+      actions.appendChild(delButton);
+      row.appendChild(actions);
+    }
+
     list.appendChild(row);
   });
 
@@ -564,7 +759,9 @@ const buildCalendar = async () => {
     }
   }
 
-  const customEvents = getCustomEventsForMonth(currentYear, currentMonth).map((item) => ({
+  await migrateLegacyCustomEvents();
+  const dbCustomEvents = await loadCustomEventsForMonth(currentYear, currentMonth);
+  const customEvents = dbCustomEvents.map((item) => ({
     day: item.day,
     title: item.title,
     type: item.type,
@@ -692,19 +889,40 @@ if (filterInputs.length > 0) {
   });
 }
 
-if (toggleEventPanel && eventPanel) {
+if (canManageEvents && toggleEventPanel && eventPanel) {
+  const plusIcon = toggleEventPanel.querySelector('.add-event-icon-plus');
+  const minusIcon = toggleEventPanel.querySelector('.add-event-icon-minus');
+
+  const setEventToggleState = () => {
+    const isClosed = eventPanel.hidden;
+    const label = isClosed ? '\u0627\u0641\u0632\u0648\u062f\u0646 \u0631\u0648\u06cc\u062f\u0627\u062f' : '\u0628\u0633\u062a\u0646 \u0641\u0631\u0645';
+    toggleEventPanel.classList.toggle('is-open', !isClosed);
+    toggleEventPanel.setAttribute('aria-label', label);
+    toggleEventPanel.setAttribute('title', label);
+
+    if (plusIcon) plusIcon.style.display = isClosed ? 'block' : 'none';
+    if (minusIcon) minusIcon.style.display = isClosed ? 'none' : 'block';
+  };
+
+  setEventFormMode('create');
+  setEventToggleState();
+
   toggleEventPanel.addEventListener('click', () => {
     eventPanel.hidden = !eventPanel.hidden;
-    toggleEventPanel.textContent = eventPanel.hidden ? 'افزودن رویداد' : 'بستن فرم';
+    setEventToggleState();
     if (!eventPanel.hidden) {
+      exitEditMode();
+      if (eventForm) eventForm.reset();
       setFormDefaults(selectedDay || today.jd);
+      showFormError('');
       if (eventTitleInput) eventTitleInput.focus();
     }
   });
 }
 
-if (eventForm) {
-  eventForm.addEventListener('submit', (event) => {
+if (canManageEvents && eventForm) {
+
+  eventForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!eventYearInput || !eventMonthInput || !eventDayInput || !eventTitleInput || !eventTypeInput) return;
 
@@ -736,9 +954,8 @@ if (eventForm) {
       showFormError('نوع رویداد معتبر نیست.');
       return;
     }
-
-    const newEvent = {
-      id: `evt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+    const payload = {
+      id: editingEventId,
       year,
       month,
       day,
@@ -748,30 +965,63 @@ if (eventForm) {
       time: 'تمام روز'
     };
 
-    addCustomEvent(newEvent);
-    showFormError('');
-    eventForm.reset();
-    setFormDefaults(day);
-    buildCalendar();
+    try {
+      if (editingEventId) {
+        await updateCustomEvent(payload);
+      } else {
+        await addCustomEvent(payload);
+      }
+
+      showFormError('');
+      exitEditMode();
+      eventForm.reset();
+      setFormDefaults(day);
+      await buildCalendar();
+    } catch (error) {
+      showFormError(error instanceof Error ? error.message : 'عملیات رویداد ناموفق بود.');
+    }
   });
 }
 
-if (eventResetButton) {
+if (canManageEvents && eventResetButton) {
   eventResetButton.addEventListener('click', () => {
     if (eventForm) eventForm.reset();
+    exitEditMode();
     showFormError('');
     setFormDefaults(selectedDay || today.jd);
   });
 }
 
-if (eventList) {
-  eventList.addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-event-delete]');
-    if (!button) return;
-    const id = button.getAttribute('data-event-delete');
+if (canManageEvents && eventList) {
+  eventList.addEventListener('click', async (event) => {
+    const editButton = event.target.closest('button[data-event-edit]');
+    if (editButton) {
+      const editId = editButton.getAttribute('data-event-edit');
+      if (!editId) return;
+      const target = getCustomEventsForMonth(currentYear, currentMonth).find((item) => item.id === String(editId));
+      if (!target) {
+        showFormError('رویداد موردنظر برای ویرایش پیدا نشد.');
+        return;
+      }
+      enterEditMode(target);
+      return;
+    }
+
+    const deleteButton = event.target.closest('button[data-event-delete]');
+    if (!deleteButton) return;
+    const id = deleteButton.getAttribute('data-event-delete');
     if (!id) return;
-    removeCustomEvent(id);
-    buildCalendar();
+    try {
+      await removeCustomEvent(id);
+      if (editingEventId && editingEventId === String(id)) {
+        if (eventForm) eventForm.reset();
+        exitEditMode();
+        setFormDefaults(selectedDay || today.jd);
+      }
+      await buildCalendar();
+    } catch (error) {
+      showFormError(error instanceof Error ? error.message : 'عملیات رویداد ناموفق بود.');
+    }
   });
 }
 

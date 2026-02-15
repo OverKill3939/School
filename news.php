@@ -6,63 +6,112 @@ require_login();
 
 $pageTitle = 'اخبار | هنرستان دارالفنون';
 $activeNav = 'news';
+$extraStyles = ['css/news.css'];
+$extraScripts = ['public/js/news-video-frame.js'];
 
-require __DIR__ . '/partials/header.php';
+function fa_date(string $date): string
+{
+    $ts = strtotime($date);
+    if ($ts === false) {
+        return $date;
+    }
+    if (class_exists('IntlDateFormatter')) {
+        $fmt = new IntlDateFormatter('fa_IR', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE, null, IntlDateFormatter::GREGORIAN, 'd MMMM y');
+        $out = $fmt->format($ts);
+        if ($out !== false) {
+            return $out;
+        }
+    }
+    return date('Y/m/d', $ts);
+}
 
 $pdo = get_db();
+$page = max(1, (int)($_GET['page'] ?? 1));
+$perPage = 9;
+$offset = ($page - 1) * $perPage;
+
+$totalStmt = $pdo->query("SELECT COUNT(*) FROM news WHERE is_published = 1");
+$total = (int)$totalStmt->fetchColumn();
+$totalPages = max(1, (int)ceil($total / $perPage));
+if ($page > $totalPages) {
+    $page = $totalPages;
+    $offset = ($page - 1) * $perPage;
+}
 
 $stmt = $pdo->prepare("
-    SELECT n.id, n.title, n.slug, n.image_path, n.published_at, 
+    SELECT n.id, n.title, n.slug, n.excerpt, n.image_path, n.video_path, n.published_at,
            u.first_name, u.last_name
     FROM news n
     JOIN users u ON n.author_id = u.id
     WHERE n.is_published = 1
     ORDER BY n.published_at DESC
-    LIMIT 20
+    LIMIT :limit OFFSET :offset
 ");
+$stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $newsItems = $stmt->fetchAll() ?: [];
+
+$user = current_user();
+
+require __DIR__ . '/partials/header.php';
 ?>
 
-<main class="container" style="margin: 2rem auto; max-width: 1200px;">
-    <h1 style="text-align: center; margin-bottom: 1.5rem;">اخبار و اطلاعیه‌ها</h1>
-
-    <?php if (current_user() && current_user()['role'] === 'admin'): ?>
-        <div style="text-align: center; margin-bottom: 2rem;">
-            <a href="news-create.php" class="btn btn-primary">ایجاد خبر جدید</a>
-        </div>
+<main class="news-page">
+  <div class="news-head">
+    <div>
+      <p class="kicker">مرکز اطلاع‌رسانی</p>
+      <h1>اخبار و اطلاعیه‌ها</h1>
+    </div>
+    <?php if (($user = current_user()) && ($user['role'] ?? '') === 'admin'): ?>
+      <div class="news-head-actions">
+        <a class="btn-primary" href="news-create.php">ایجاد خبر جدید</a>
+        <a class="btn-secondary" href="news-drafts.php">پیش‌نویس‌ها</a>
+      </div>
     <?php endif; ?>
+  </div>
 
-    <?php if (empty($newsItems)): ?>
-        <div style="text-align: center; padding: 4rem 1rem; color: #64748b; font-size: 1.1rem;">
-            هنوز خبری منتشر نشده است.
-        </div>
-    <?php else: ?>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.6rem;">
-            <?php foreach ($newsItems as $item): ?>
-                <div class="news-card" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: transform 0.2s;">
-                    <?php if (!empty($item['image_path'])): ?>
-                        <img src="<?= htmlspecialchars($item['image_path']) ?>" 
-                             alt="<?= htmlspecialchars($item['title']) ?>"
-                             style="width: 100%; height: 180px; object-fit: cover;">
-                    <?php endif; ?>
-                    <div style="padding: 1.25rem;">
-                        <h3 style="margin: 0 0 0.6rem; font-size: 1.25rem;">
-                            <?= htmlspecialchars($item['title']) ?>
-                        </h3>
-                        <div style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.8rem;">
-                            <?= date('Y/m/d', strtotime($item['published_at'])) ?> • 
-                            <?= htmlspecialchars($item['first_name'] . ' ' . $item['last_name']) ?>
-                        </div>
-                        <a href="news-detail.php?slug=<?= urlencode($item['slug']) ?>" ...> 
-                           style="color: #2563eb; font-weight: 500; text-decoration: none;">
-                            مشاهده خبر →
-                        </a>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
+  <?php if (empty($newsItems)): ?>
+    <div class="empty-state">هنوز خبری منتشر نشده است.</div>
+  <?php else: ?>
+    <div class="news-grid">
+      <?php foreach ($newsItems as $item): ?>
+        <article class="news-card">
+          <?php if (!empty($item['image_path'])): ?>
+            <img src="<?= htmlspecialchars($item['image_path']) ?>"
+                 alt="<?= htmlspecialchars($item['title']) ?>" loading="lazy" />
+          <?php elseif (!empty($item['video_path'])): ?>
+            <div class="news-media-wrap">
+              <video class="news-video-preview" src="<?= htmlspecialchars($item['video_path']) ?>" preload="metadata" muted playsinline data-frame-preview></video>
+              <span class="media-play-icon">▶</span>
+            </div>
+          <?php endif; ?>
+          <div class="news-body">
+            <div class="news-meta">
+              <span><?= fa_date((string)$item['published_at']) ?></span>
+              <span>•</span>
+              <span><?= htmlspecialchars($item['first_name'] . ' ' . $item['last_name']) ?></span>
+            </div>
+            <h3><?= htmlspecialchars($item['title']) ?></h3>
+            <?php if (!empty($item['excerpt'])): ?>
+              <p class="news-excerpt"><?= htmlspecialchars($item['excerpt']) ?></p>
+            <?php endif; ?>
+            <a class="news-link" href="news-detail.php?slug=<?= urlencode($item['slug']) ?>">مشاهده خبر →</a>
+          </div>
+        </article>
+      <?php endforeach; ?>
+    </div>
+
+    <div class="pagination">
+      <?php if ($page > 1): ?>
+        <a class="page-btn" href="news.php?page=<?= $page - 1 ?>">قبلی</a>
+      <?php endif; ?>
+      <span class="page-info">صفحه <?= $page ?> از <?= $totalPages ?></span>
+      <?php if ($page < $totalPages): ?>
+        <a class="page-btn" href="news.php?page=<?= $page + 1 ?>">بعدی</a>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
 </main>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>

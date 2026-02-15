@@ -65,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
 
                 login_user($newUser);
+                log_auth_event('register', true, (int)$newUser['id'], $form['national_code']);
                 header('Location: index.php');
                 exit;
             } catch (PDOException $exception) {
@@ -76,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $errors[] = 'خطای دیتابیس رخ داد. اتصال دیتابیس را بررسی کنید.';
                 }
+                log_auth_event('register', false, null, $form['national_code']);
             }
         }
     }

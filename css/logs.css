@@ -19,6 +19,10 @@ body.is-loaded .logs-page {
   padding: 1.4rem;
 }
 
+.auth-logs-card {
+  margin-top: 1.8rem;
+}
+
 .logs-head h1 {
   margin: 0;
   font-size: 1.8rem;
@@ -232,6 +236,25 @@ body.is-loaded .logs-page {
   color: #9f1239;
 }
 
+.action-login {
+  background: rgba(59, 130, 246, 0.16);
+  color: #1d4ed8;
+}
+
+.action-register {
+  background: rgba(236, 72, 153, 0.18);
+  color: #9d174d;
+}
+
+.action-success {
+  background: rgba(16, 185, 129, 0.18);
+  color: #065f46;
+}
+
+.action-fail {
+  background: rgba(244, 63, 94, 0.16);
+  color: #9f1239;
+}
 .payload-details {
   cursor: pointer;
   display: block;

@@ -103,6 +103,57 @@ CREATE TABLE IF NOT EXISTS event_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL;
 
+    $authLogsSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS auth_logs (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    event ENUM('login', 'register') NOT NULL,
+    success TINYINT(1) NOT NULL DEFAULT 0,
+    user_id INT UNSIGNED NULL,
+    national_code CHAR(10) NOT NULL DEFAULT '',
+    ip_address VARCHAR(45) NOT NULL DEFAULT '',
+    user_agent VARCHAR(255) NOT NULL DEFAULT '',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_auth_logs_created_at (created_at),
+    INDEX idx_auth_logs_event (event),
+    INDEX idx_auth_logs_user (user_id),
+    CONSTRAINT fk_auth_logs_user FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+
+    $newsSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS news (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    excerpt TEXT NULL,
+    content MEDIUMTEXT NOT NULL,
+    image_path VARCHAR(255) NULL,
+    video_path VARCHAR(255) NULL,
+    author_id INT UNSIGNED NOT NULL,
+    is_published TINYINT(1) NOT NULL DEFAULT 0,
+    published_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_news_published_at (published_at),
+    INDEX idx_news_is_published (is_published),
+    CONSTRAINT fk_news_user FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+
+    $newsMediaSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS news_media (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    news_id BIGINT UNSIGNED NOT NULL,
+    media_path VARCHAR(255) NOT NULL,
+    media_type ENUM('image','video') NOT NULL DEFAULT 'image',
+    position SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_news_media_news (news_id, position),
+    CONSTRAINT fk_news_media_news FOREIGN KEY (news_id) REFERENCES news(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+
     $schedulesSql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS schedules (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -144,10 +195,15 @@ SQL;
     $pdo->exec($usersSql);
     $pdo->exec($eventsSql);
     $pdo->exec($logsSql);
+    $pdo->exec($authLogsSql);
+    $pdo->exec($newsSql);
+    $pdo->exec($newsMediaSql);
     $pdo->exec($schedulesSql);
     $pdo->exec($scheduleHistorySql);
 
     ensure_schedule_history_columns_mysql($pdo);
+    ensure_news_columns_mysql($pdo);
+    ensure_news_media_columns_mysql($pdo);
 }
 
 function ensure_schedule_history_columns_mysql(PDO $pdo): void
@@ -224,7 +280,7 @@ SQL;
     // ────────────────────────────────────────────────────────────────
     // لاگ فعالیت‌ها
     // ────────────────────────────────────────────────────────────────
-    $logsSql = <<<'SQL'
+$logsSql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS event_logs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     actor_user_id   INTEGER NOT NULL,
@@ -240,10 +296,54 @@ CREATE TABLE IF NOT EXISTS event_logs (
 );
 SQL;
 
-    // ────────────────────────────────────────────────────────────────
-    // برنامه کلاسی (ساعتی)
-    // ────────────────────────────────────────────────────────────────
-    $schedulesSql = <<<'SQL'
+$authLogsSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS auth_logs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    event           TEXT NOT NULL CHECK(event IN ('login', 'register')),
+    success         INTEGER NOT NULL DEFAULT 0,
+    user_id         INTEGER,
+    national_code   TEXT NOT NULL DEFAULT '',
+    ip_address      TEXT NOT NULL DEFAULT '',
+    user_agent      TEXT NOT NULL DEFAULT '',
+    created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+SQL;
+
+$newsSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS news (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    title         TEXT NOT NULL,
+    slug          TEXT NOT NULL UNIQUE,
+    excerpt       TEXT,
+    content       TEXT NOT NULL,
+    image_path    TEXT,
+    video_path    TEXT,
+    author_id     INTEGER NOT NULL,
+    is_published  INTEGER NOT NULL DEFAULT 0,
+    published_at  TEXT,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    updated_at    TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT
+);
+SQL;
+
+$newsMediaSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS news_media (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    news_id     INTEGER NOT NULL,
+    media_path  TEXT NOT NULL,
+    media_type  TEXT NOT NULL DEFAULT 'image',
+    position    INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY (news_id) REFERENCES news(id) ON DELETE CASCADE
+);
+SQL;
+
+// ────────────────────────────────────────────────────────────────
+// برنامه کلاسی (ساعتی)
+// ────────────────────────────────────────────────────────────────
+$schedulesSql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS schedules (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     grade       INTEGER NOT NULL,
@@ -344,6 +444,9 @@ SQL;
     $pdo->exec($usersSql);
     $pdo->exec($eventsSql);
     $pdo->exec($logsSql);
+    $pdo->exec($authLogsSql);
+    $pdo->exec($newsSql);
+    $pdo->exec($newsMediaSql);
     $pdo->exec($schedulesSql);
     $pdo->exec($scheduleHistorySql);
     $pdo->exec($electionsSql);
@@ -358,6 +461,12 @@ SQL;
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_event_logs_created_at     ON event_logs(created_at)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_event_logs_actor          ON event_logs(actor_user_id)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_event_logs_action         ON event_logs(action)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_auth_logs_created_at      ON auth_logs(created_at)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_auth_logs_event           ON auth_logs(event)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_auth_logs_user            ON auth_logs(user_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_news_published_at         ON news(published_at)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_news_is_published         ON news(is_published)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_news_media_news           ON news_media(news_id, position)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_schedules_grade_field      ON schedules(grade, field)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_schedule_history_schedule  ON schedule_history(schedule_id)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_schedule_history_admin     ON schedule_history(admin_id)");
@@ -372,6 +481,72 @@ SQL;
     // اضافه کردن ستون‌های جدید به schedule_history در صورت نبود
     // ────────────────────────────────────────────────────────────────
     ensure_schedule_history_columns_sqlite($pdo);
+    ensure_news_columns_sqlite($pdo);
+}
+
+function ensure_news_columns_mysql(PDO $pdo): void
+{
+    $columns = [];
+    $stmt = $pdo->query('SHOW COLUMNS FROM news');
+    foreach ($stmt->fetchAll() as $row) {
+        $name = (string)($row['Field'] ?? '');
+        if ($name !== '') {
+            $columns[$name] = true;
+        }
+    }
+
+    $alter = [];
+    if (!isset($columns['excerpt'])) {
+        $alter[] = "ADD COLUMN excerpt TEXT NULL AFTER slug";
+    }
+    if (!isset($columns['video_path'])) {
+        $alter[] = "ADD COLUMN video_path VARCHAR(255) NULL AFTER image_path";
+    }
+    if (!isset($columns['is_published'])) {
+        $alter[] = "ADD COLUMN is_published TINYINT(1) NOT NULL DEFAULT 0 AFTER author_id";
+    }
+    if (!isset($columns['published_at'])) {
+        $alter[] = "ADD COLUMN published_at DATETIME NULL AFTER is_published";
+    }
+    if ($alter !== []) {
+        $sql = "ALTER TABLE news " . implode(', ', $alter);
+        $pdo->exec($sql);
+    }
+}
+
+function ensure_news_columns_sqlite(PDO $pdo): void
+{
+    $columns = [];
+    $stmt = $pdo->query('PRAGMA table_info(news)');
+    foreach ($stmt->fetchAll() as $row) {
+        $name = (string)($row['name'] ?? '');
+        if ($name !== '') {
+            $columns[$name] = true;
+        }
+    }
+
+    if (!isset($columns['excerpt'])) {
+        $pdo->exec("ALTER TABLE news ADD COLUMN excerpt TEXT NULL");
+    }
+    if (!isset($columns['video_path'])) {
+        $pdo->exec("ALTER TABLE news ADD COLUMN video_path TEXT NULL");
+    }
+    if (!isset($columns['is_published'])) {
+        $pdo->exec("ALTER TABLE news ADD COLUMN is_published INTEGER NOT NULL DEFAULT 0");
+    }
+    if (!isset($columns['published_at'])) {
+        $pdo->exec("ALTER TABLE news ADD COLUMN published_at TEXT NULL");
+    }
+}
+
+function ensure_news_media_columns_mysql(PDO $pdo): void
+{
+    // جدول خودکار ایجاد می‌شود در ensure_schema_mysql؛ این تابع برای ایندکس/سازگاری آینده است.
+}
+
+function ensure_news_media_columns_sqlite(PDO $pdo): void
+{
+    // جدول خودکار ایجاد می‌شود در ensure_schema_sqlite؛ این تابع برای سازگاری آینده است.
 }
 function ensure_schedule_history_columns_sqlite(PDO $pdo): void
 {

@@ -453,6 +453,41 @@ function log_event_action(?array $actor, string $action, ?int $entityId, ?array 
     }
 }
 
+function log_auth_event(string $event, bool $success, ?int $userId, string $nationalCode): void
+{
+    if (!in_array($event, ['login', 'register'], true)) {
+        return;
+    }
+
+    $ip = substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+    $userAgent = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
+    $nationalCode = substr(preg_replace('/\D+/', '', $nationalCode) ?? '', 0, 10);
+
+    try {
+        $pdo = get_db();
+        $stmt = $pdo->prepare(
+            'INSERT INTO auth_logs (event, success, user_id, national_code, ip_address, user_agent)
+             VALUES (:event, :success, :user_id, :national_code, :ip_address, :user_agent)'
+        );
+
+        $stmt->bindValue(':event', $event, PDO::PARAM_STR);
+        $stmt->bindValue(':success', $success ? 1 : 0, PDO::PARAM_INT);
+
+        if ($userId === null) {
+            $stmt->bindValue(':user_id', null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        }
+
+        $stmt->bindValue(':national_code', $nationalCode, PDO::PARAM_STR);
+        $stmt->bindValue(':ip_address', $ip, PDO::PARAM_STR);
+        $stmt->bindValue(':user_agent', $userAgent, PDO::PARAM_STR);
+        $stmt->execute();
+    } catch (Throwable) {
+        // Do not break auth flow if logging fails.
+    }
+}
+
 function list_users_for_log_filter(): array
 {
     $pdo = get_db();
@@ -530,6 +565,90 @@ function count_event_logs(array $filters): int
     $where = build_event_log_filter_sql($filters, $params);
 
     $sql = 'SELECT COUNT(*) FROM event_logs el' . $where;
+    $stmt = $pdo->prepare($sql);
+
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+
+    $stmt->execute();
+    return (int)$stmt->fetchColumn();
+}
+
+function build_auth_log_filter_sql(array $filters, array &$params): string
+{
+    $conditions = [];
+
+    if (!empty($filters['event'])) {
+        $conditions[] = 'al.event = :event';
+        $params[':event'] = (string)$filters['event'];
+    }
+
+    if ($filters['success'] !== null) {
+        $conditions[] = 'al.success = :success';
+        $params[':success'] = $filters['success'] ? 1 : 0;
+    }
+
+    if (!empty($filters['user_id'])) {
+        $conditions[] = 'al.user_id = :user_id';
+        $params[':user_id'] = (int)$filters['user_id'];
+    }
+
+    if (!empty($filters['from_date'])) {
+        $conditions[] = 'al.created_at >= :from_date';
+        $params[':from_date'] = (string)$filters['from_date'];
+    }
+
+    if (!empty($filters['to_date'])) {
+        $conditions[] = 'al.created_at < :to_date';
+        $params[':to_date'] = (string)$filters['to_date'];
+    }
+
+    if ($conditions === []) {
+        return '';
+    }
+
+    return ' WHERE ' . implode(' AND ', $conditions);
+}
+
+function list_auth_logs(array $filters, int $limit = 20, int $offset = 0): array
+{
+    $pdo = get_db();
+
+    $params = [];
+    $where = build_auth_log_filter_sql($filters, $params);
+
+    $sql =
+        'SELECT al.id, al.event, al.success, al.user_id, al.national_code, al.ip_address, al.user_agent, al.created_at,
+                u.first_name, u.last_name, u.role
+         FROM auth_logs al
+         LEFT JOIN users u ON u.id = al.user_id' .
+        $where .
+        ' ORDER BY al.id DESC
+          LIMIT :limit OFFSET :offset';
+
+    $stmt = $pdo->prepare($sql);
+
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+
+    $stmt->bindValue(':limit', max(1, $limit), PDO::PARAM_INT);
+    $stmt->bindValue(':offset', max(0, $offset), PDO::PARAM_INT);
+    $stmt->execute();
+
+    $rows = $stmt->fetchAll();
+    return is_array($rows) ? $rows : [];
+}
+
+function count_auth_logs(array $filters): int
+{
+    $pdo = get_db();
+
+    $params = [];
+    $where = build_auth_log_filter_sql($filters, $params);
+
+    $sql = 'SELECT COUNT(*) FROM auth_logs al' . $where;
     $stmt = $pdo->prepare($sql);
 
     foreach ($params as $key => $value) {

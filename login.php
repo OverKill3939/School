@@ -21,12 +21,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!preg_match('/^\d{10}$/', $nationalCode)) {
             $error = 'کد ملی باید ۱۰ رقم باشد.';
+            log_auth_event('login', false, null, $nationalCode);
         } else {
             $user = find_user_by_national_code($nationalCode);
             if (!$user || !password_verify($password, $user['password_hash'])) {
                 $error = 'کد ملی یا رمز عبور اشتباه است.';
+                log_auth_event('login', false, $user['id'] ?? null, $nationalCode);
             } else {
                 login_user($user);
+                log_auth_event('login', true, (int)$user['id'], $nationalCode);
                 header('Location: index.php');
                 exit;
             }

@@ -38,10 +38,11 @@
   </footer>
 
   <script src="js/script.js"></script>
-  <?php if (!empty($extraScripts)): ?>
-    <?php foreach ($extraScripts as $scriptPath): ?>
-      <script src="<?= htmlspecialchars($scriptPath, ENT_QUOTES, 'UTF-8') ?>"></script>
-    <?php endforeach; ?>
-  <?php endif; ?>
+<?php if (!empty($extraScripts)): ?>
+  <?php foreach ($extraScripts as $scriptPath): ?>
+    <script src="<?= htmlspecialchars($scriptPath, ENT_QUOTES, 'UTF-8') ?>"></script>
+  <?php endforeach; ?>
+<?php endif; ?>
+  <script src="public/js/clear-file.js"></script>
 </body>
 </html>

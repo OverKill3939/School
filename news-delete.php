@@ -20,7 +20,7 @@ if (!$slug) {
 
 $pdo = get_db();
 
-$stmt = $pdo->prepare("SELECT id, image_path FROM news WHERE slug = ? AND is_published = 1 LIMIT 1");
+$stmt = $pdo->prepare("SELECT id, image_path, video_path FROM news WHERE slug = ? LIMIT 1");
 $stmt->execute([$slug]);
 $news = $stmt->fetch();
 
@@ -28,9 +28,32 @@ if (!$news) {
     die("خبر پیدا نشد");
 }
 
-// حذف عکس اگر وجود داشت
-if ($news['image_path'] && file_exists(__DIR__ . '/public' . $news['image_path'])) {
-    @unlink(__DIR__ . '/public' . $news['image_path']);
+// جمع‌آوری تمام رسانه‌های خبر (اصلی + گالری)
+$mediaStmt = $pdo->prepare("SELECT media_path FROM news_media WHERE news_id = ?");
+$mediaStmt->execute([$news['id']]);
+$galleryPaths = array_column($mediaStmt->fetchAll() ?: [], 'media_path');
+
+// حذف فایل‌ها اگر وجود داشت (اول مسیر جدید، سپس مسیر قدیمی public برای تطبیق نسخه‌های قبلی)
+$paths = [];
+if (!empty($news['image_path'])) {
+    $paths[] = __DIR__ . $news['image_path'];            // /uploads/...
+    $paths[] = __DIR__ . '/public' . $news['image_path']; // مسیر قدیمی
+}
+if (!empty($news['video_path'])) {
+    $paths[] = __DIR__ . $news['video_path'];
+    $paths[] = __DIR__ . '/public' . $news['video_path'];
+}
+foreach ($galleryPaths as $mediaPath) {
+    if (!$mediaPath) {
+        continue;
+    }
+    $paths[] = __DIR__ . $mediaPath;
+    $paths[] = __DIR__ . '/public' . $mediaPath;
+}
+foreach ($paths as $p) {
+    if (file_exists($p)) {
+        @unlink($p);
+    }
 }
 
 $deleteStmt = $pdo->prepare("DELETE FROM news WHERE id = ?");

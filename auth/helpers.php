@@ -646,3 +646,8 @@ function delete_user_by_admin(int $targetUserId, int $actorUserId): void
         throw new RuntimeException('این کاربر به داده‌های دیگر متصل است و قابل حذف نیست.');
     }
 }
+// helpers.php
+function format_number(mixed $num, int $decimals = 0): string
+{
+    return number_format((float)$num, $decimals, '.', ',');
+}

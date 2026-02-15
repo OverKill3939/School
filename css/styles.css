@@ -747,3 +747,180 @@ body.is-scrolled .site-header {
   transform: translateY(0);
   pointer-events: auto;
 }
+/* ──────────────────────────────────────────────
+   استایل اختصاصی بخش انتخابات
+   ────────────────────────────────────────────── */
+
+.election-hero {
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  color: white;
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  margin-bottom: 2.5rem;
+  box-shadow: 0 10px 30px rgba(30, 64, 175, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.election-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 60%);
+  opacity: 0.4;
+}
+
+.election-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 16px;
+  padding: 1.8rem 2rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.10);
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  margin-bottom: 2rem;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.election-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+}
+
+.election-section-title {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #1e40af;
+  margin: 0 0 1.4rem;
+  position: relative;
+  padding-bottom: 0.6rem;
+}
+
+.election-section-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 70px;
+  height: 3px;
+  background: linear-gradient(to left, #2563eb, #60a5fa);
+  border-radius: 2px;
+}
+
+.election-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.4rem;
+  margin: 1.5rem 0;
+}
+
+.election-stat-item {
+  background: #f0f7ff;
+  border-radius: 14px;
+  padding: 1.4rem;
+  text-align: center;
+  border: 1px solid #bfdbfe;
+  transition: all 0.2s;
+}
+
+.election-stat-item:hover {
+  background: #e0f2fe;
+  transform: translateY(-3px);
+}
+
+.election-stat-number {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #1d4ed8;
+  margin-bottom: 0.4rem;
+}
+
+.election-progress-bar {
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 0.6rem;
+}
+
+.election-progress-fill {
+  height: 100%;
+  background: linear-gradient(to right, #3b82f6, #60a5fa);
+  transition: width 0.5s ease;
+}
+
+.candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.6rem;
+  margin-top: 1.5rem;
+}
+
+.candidate-card {
+  background: white;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  transition: all 0.25s ease;
+}
+
+.candidate-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.14);
+}
+
+.candidate-info {
+  padding: 1.3rem;
+}
+
+.candidate-name {
+  font-size: 1.28rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: #0f172a;
+}
+
+.candidate-meta {
+  color: #475569;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.candidate-votes {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+/* دکمه پایان انتخابات */
+.btn-end-election {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: white;
+  border: none;
+  padding: 0.9rem 2rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+  transition: all 0.22s;
+}
+
+.btn-end-election:hover {
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.4);
+}
+.tools-menu summary {
+  color: #10b981; /* سبز برای ابزارها */
+  font-weight: 600;
+}
+
+.admin-menu .election {
+  color: #8b5cf6; /* بنفش برای انتخابات */
+}
+
+.admin-menu .election.active {
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.08);
+}

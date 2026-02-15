@@ -187,125 +187,192 @@ function ensure_schedule_history_columns_mysql(PDO $pdo): void
 
 function ensure_schema_sqlite(PDO $pdo): void
 {
+    // ────────────────────────────────────────────────────────────────
+    // جدول کاربران
+    // ────────────────────────────────────────────────────────────────
     $usersSql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL,
-    phone TEXT NOT NULL UNIQUE,
-    national_code TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'user')),
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name      TEXT NOT NULL,
+    last_name       TEXT NOT NULL,
+    phone           TEXT NOT NULL UNIQUE,
+    national_code   TEXT NOT NULL UNIQUE,
+    password_hash   TEXT NOT NULL,
+    role            TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'user')),
+    created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 SQL;
 
+    // ────────────────────────────────────────────────────────────────
+    // تقویم / رویدادها
+    // ────────────────────────────────────────────────────────────────
     $eventsSql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS calendar_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    year INTEGER NOT NULL,
-    month INTEGER NOT NULL,
-    day INTEGER NOT NULL,
-    title TEXT NOT NULL,
-    type TEXT NOT NULL CHECK(type IN ('exam', 'event', 'extra-holiday')),
-    notes TEXT NOT NULL DEFAULT '',
-    created_by INTEGER NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    year        INTEGER NOT NULL,
+    month       INTEGER NOT NULL,
+    day         INTEGER NOT NULL,
+    title       TEXT NOT NULL,
+    type        TEXT NOT NULL CHECK(type IN ('exam', 'event', 'extra-holiday')),
+    notes       TEXT NOT NULL DEFAULT '',
+    created_by  INTEGER NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT
 );
 SQL;
 
+    // ────────────────────────────────────────────────────────────────
+    // لاگ فعالیت‌ها
+    // ────────────────────────────────────────────────────────────────
     $logsSql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS event_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    actor_user_id INTEGER NOT NULL,
-    action TEXT NOT NULL,
-    entity TEXT NOT NULL DEFAULT 'calendar_event',
-    entity_id INTEGER NULL,
-    before_data TEXT NULL,
-    after_data TEXT NULL,
-    ip_address TEXT NOT NULL DEFAULT '',
-    user_agent TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_user_id   INTEGER NOT NULL,
+    action          TEXT NOT NULL,
+    entity          TEXT NOT NULL DEFAULT 'calendar_event',
+    entity_id       INTEGER,
+    before_data     TEXT,
+    after_data      TEXT,
+    ip_address      TEXT NOT NULL DEFAULT '',
+    user_agent      TEXT NOT NULL DEFAULT '',
+    created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT
 );
 SQL;
 
+    // ────────────────────────────────────────────────────────────────
+    // برنامه کلاسی (ساعتی)
+    // ────────────────────────────────────────────────────────────────
     $schedulesSql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS schedules (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    grade INTEGER NOT NULL,
-    field TEXT NOT NULL,
-    day INTEGER NOT NULL,
-    hour INTEGER NOT NULL,
-    subject TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    grade       INTEGER NOT NULL,
+    field       TEXT NOT NULL,
+    day         INTEGER NOT NULL,
+    hour        INTEGER NOT NULL,
+    subject     TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (grade, field, day, hour)
 );
 SQL;
 
+    // ────────────────────────────────────────────────────────────────
+    // تاریخچه تغییرات برنامه کلاسی
+    // ────────────────────────────────────────────────────────────────
     $scheduleHistorySql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS schedule_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    schedule_id INTEGER NOT NULL,
-    admin_id INTEGER NOT NULL,
-    grade INTEGER NULL,
-    field_name TEXT NULL,
-    day INTEGER NULL,
-    hour INTEGER NULL,
-    action TEXT NOT NULL DEFAULT 'update',
-    old_subject TEXT NULL,
-    new_subject TEXT NULL,
-    changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    schedule_id     INTEGER NOT NULL,
+    admin_id        INTEGER NOT NULL,
+    grade           INTEGER,
+    field_name      TEXT,
+    day             INTEGER,
+    hour            INTEGER,
+    action          TEXT NOT NULL DEFAULT 'update',
+    old_subject     TEXT,
+    new_subject     TEXT,
+    changed_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE,
-    FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE RESTRICT
+    FOREIGN KEY (admin_id)    REFERENCES users(id)    ON DELETE RESTRICT
 );
 SQL;
 
-    $indexEventSql = <<<'SQL'
-CREATE INDEX IF NOT EXISTS idx_calendar_month ON calendar_events(year, month, day);
+    // ────────────────────────────────────────────────────────────────
+    // سیستم رای‌گیری شورای دانش‌آموزی (جدید)
+    // ────────────────────────────────────────────────────────────────
+
+    // انتخابات (هر دوره یک رکورد)
+    $electionsSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS elections (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL DEFAULT 'شورای دانش آموزی',
+    year        INTEGER NOT NULL,
+    is_active   INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
 SQL;
 
-    $indexLogsCreatedSql = <<<'SQL'
-CREATE INDEX IF NOT EXISTS idx_event_logs_created_at ON event_logs(created_at);
+    // تعداد مجاز رأی‌دهی برای هر پایه + رشته
+    $eligibleSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS election_eligible (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    election_id     INTEGER NOT NULL,
+    grade           INTEGER NOT NULL CHECK(grade IN (10, 11, 12)),
+    field           TEXT NOT NULL CHECK(field IN ('شبکه و نرم افزار', 'برق', 'الکترونیک')),
+    eligible_count  INTEGER NOT NULL CHECK(eligible_count >= 0),
+    voted_count     INTEGER NOT NULL DEFAULT 0 CHECK(voted_count >= 0),
+    created_at      TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (election_id) REFERENCES elections(id) ON DELETE CASCADE,
+    UNIQUE(election_id, grade, field)
+);
 SQL;
 
-    $indexLogsActorSql = <<<'SQL'
-CREATE INDEX IF NOT EXISTS idx_event_logs_actor ON event_logs(actor_user_id);
+    // لیست کاندیداها
+    $candidatesSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS candidates (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    election_id INTEGER NOT NULL,
+    full_name   TEXT NOT NULL,
+    grade       INTEGER NOT NULL CHECK(grade IN (10, 11, 12)),
+    field       TEXT NOT NULL,
+    photo_path  TEXT,
+    votes       INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (election_id) REFERENCES elections(id) ON DELETE CASCADE
+);
 SQL;
 
-    $indexLogsActionSql = <<<'SQL'
-CREATE INDEX IF NOT EXISTS idx_event_logs_action ON event_logs(action);
+    // ثبت تک‌تک آراء (بدون ستون ip_address چون دیگر برای محدود کردن استفاده نمی‌شود)
+    $votesSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS votes (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    election_id  INTEGER NOT NULL,
+    candidate_id INTEGER NOT NULL,
+    grade        INTEGER NOT NULL,
+    field        TEXT NOT NULL,
+    voted_at     TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (election_id)  REFERENCES elections(id)   ON DELETE CASCADE,
+    FOREIGN KEY (candidate_id) REFERENCES candidates(id)  ON DELETE CASCADE
+);
 SQL;
 
-    $indexSchedulesSql = <<<'SQL'
-CREATE INDEX IF NOT EXISTS idx_schedules_grade_field ON schedules(grade, field);
-SQL;
-
-    $indexScheduleHistoryScheduleSql = <<<'SQL'
-CREATE INDEX IF NOT EXISTS idx_schedule_history_schedule ON schedule_history(schedule_id);
-SQL;
-
-    $indexScheduleHistoryAdminSql = <<<'SQL'
-CREATE INDEX IF NOT EXISTS idx_schedule_history_admin ON schedule_history(admin_id);
-SQL;
-
+    // ────────────────────────────────────────────────────────────────
+    // اجرای تمام CREATE TABLE ها
+    // ────────────────────────────────────────────────────────────────
     $pdo->exec($usersSql);
     $pdo->exec($eventsSql);
     $pdo->exec($logsSql);
     $pdo->exec($schedulesSql);
     $pdo->exec($scheduleHistorySql);
-    $pdo->exec($indexEventSql);
-    $pdo->exec($indexLogsCreatedSql);
-    $pdo->exec($indexLogsActorSql);
-    $pdo->exec($indexLogsActionSql);
-    $pdo->exec($indexSchedulesSql);
-    $pdo->exec($indexScheduleHistoryScheduleSql);
-    $pdo->exec($indexScheduleHistoryAdminSql);
+    $pdo->exec($electionsSql);
+    $pdo->exec($eligibleSql);
+    $pdo->exec($candidatesSql);
+    $pdo->exec($votesSql);
+
+    // ────────────────────────────────────────────────────────────────
+    // ایندکس‌ها
+    // ────────────────────────────────────────────────────────────────
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_calendar_month            ON calendar_events(year, month, day)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_event_logs_created_at     ON event_logs(created_at)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_event_logs_actor          ON event_logs(actor_user_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_event_logs_action         ON event_logs(action)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_schedules_grade_field      ON schedules(grade, field)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_schedule_history_schedule  ON schedule_history(schedule_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_schedule_history_admin     ON schedule_history(admin_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_schedule_history_action    ON schedule_history(action)");
+
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_votes_election_candidate   ON votes(election_id, candidate_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_votes_grade_field          ON votes(grade, field)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_eligible_election          ON election_eligible(election_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_candidates_election        ON candidates(election_id)");
+
+    // ────────────────────────────────────────────────────────────────
+    // اضافه کردن ستون‌های جدید به schedule_history در صورت نبود
+    // ────────────────────────────────────────────────────────────────
     ensure_schedule_history_columns_sqlite($pdo);
 }
-
 function ensure_schedule_history_columns_sqlite(PDO $pdo): void
 {
     $columns = [];

@@ -33,30 +33,41 @@ $user = current_user();
           <span class="tag">شبکه و نرم افزار • برق • الکترونیک</span>
         </div>
       </div>
+
       <nav class="nav">
         <a href="index.php" <?= $activeNav === 'home' ? 'style="color: var(--accent);"' : '' ?>>خانه</a>
+
+        <!-- برگشت به حالت قبلی: دانش آموزان -->
         <details class="students-menu <?= in_array($activeNav, ['schedule'], true) ? 'is-active' : '' ?>">
           <summary>دانش آموزان</summary>
           <div class="students-menu-list">
             <a href="schedule.php" class="schedule <?= $activeNav === 'schedule' ? 'active' : '' ?>">برنامه هفتگی</a>
           </div>
         </details>
-        <a href="#">اخبار</a>
+
+        <a href="news.php">اخبار</a>
         <a href="calendar.php" <?= $activeNav === 'calendar' ? 'style="color: var(--accent);"' : '' ?>>تقویم</a>
-        <a href="#">درباره</a>
+        <a href="about.php">درباره</a>
+
         <?php if (($user['role'] ?? '') === 'admin'): ?>
-        <details class="admin-menu <?= in_array($activeNav, ['logs', 'users'], true) ? 'is-active' : '' ?>">
+        <details class="admin-menu <?= in_array($activeNav, ['logs', 'users', 'election'], true) ? 'is-active' : '' ?>">
           <summary>مدیریت</summary>
           <div class="admin-menu-list">
             <a href="logs.php" class="logs <?= $activeNav === 'logs' ? 'active' : '' ?>">لاگ</a>
             <a href="users.php" class="users <?= $activeNav === 'users' ? 'active' : '' ?>">کاربران</a>
+            <!-- گزینه جدید: انتخابات فقط برای ادمین -->
+            <a href="election.php" class="election <?= $activeNav === 'election' ? 'active' : '' ?>">انتخابات</a>
           </div>
         </details>
         <?php endif; ?>
       </nav>
+
       <div class="header-actions">
         <?php if ($user): ?>
-          <span class="user-chip"><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($user['role'], ENT_QUOTES, 'UTF-8') ?>)</span>
+          <span class="user-chip">
+            <?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name'], ENT_QUOTES, 'UTF-8') ?>
+            (<?= htmlspecialchars($user['role'], ENT_QUOTES, 'UTF-8') ?>)
+          </span>
           <details class="profile-menu">
             <summary class="profile-trigger" aria-label="منوی پروفایل" title="منوی پروفایل">
               <img src="img/waguri111.jpg" alt="" aria-hidden="true" />

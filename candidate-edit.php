@@ -7,36 +7,37 @@ require_admin();
 $allowedGrades = [10, 11, 12];
 $allowedFields = ['شبکه و نرم افزار', 'برق', 'الکترونیک'];
 
-$electionId = (int)($_GET['election_id'] ?? $_POST['election_id'] ?? 0);
-if ($electionId <= 0) {
-    header('Location: election.php?error=' . urlencode('شناسه انتخابات نامعتبر است.'));
+$candidateId = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
+if ($candidateId <= 0) {
+    header('Location: election.php?error=' . urlencode('شناسه کاندیدا نامعتبر است.'));
     exit;
 }
 
 $pdo = get_db();
-$electionStmt = $pdo->prepare('SELECT id, title FROM elections WHERE id = :id LIMIT 1');
-$electionStmt->execute([':id' => $electionId]);
-$election = $electionStmt->fetch();
+$candidateStmt = $pdo->prepare('SELECT * FROM candidates WHERE id = :id LIMIT 1');
+$candidateStmt->execute([':id' => $candidateId]);
+$candidate = $candidateStmt->fetch();
 
-if (!$election) {
-    header('Location: election.php?error=' . urlencode('انتخابات پیدا نشد.'));
+if (!$candidate) {
+    header('Location: election.php?error=' . urlencode('کاندیدا پیدا نشد.'));
     exit;
 }
 
-$pageTitle = 'افزودن کاندیدا | انتخابات';
+$pageTitle = 'ویرایش کاندیدا | انتخابات';
 $activeNav = 'election';
 $extraStyles = ['css/election.css'];
 
-$errors = [];
 $formData = [
-    'full_name' => trim((string)($_POST['full_name'] ?? '')),
-    'grade' => (int)($_POST['grade'] ?? 10),
-    'field' => trim((string)($_POST['field'] ?? $allowedFields[0])),
+    'full_name' => trim((string)($_POST['full_name'] ?? $candidate['full_name'] ?? '')),
+    'grade' => (int)($_POST['grade'] ?? $candidate['grade'] ?? 10),
+    'field' => trim((string)($_POST['field'] ?? $candidate['field'] ?? $allowedFields[0])),
 ];
+
+$errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_check($_POST['csrf_token'] ?? null)) {
-        $errors[] = 'نشست شما منقضی شده است. فرم را دوباره ارسال کنید.';
+        $errors[] = 'نشست شما منقضی شده است. دوباره تلاش کنید.';
     }
 
     if ($formData['full_name'] === '' || mb_strlen($formData['full_name']) < 3) {
@@ -51,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'رشته انتخاب شده معتبر نیست.';
     }
 
-    $photoPath = null;
+    $photoPath = (string)($candidate['photo_path'] ?? '');
+
     if (isset($_FILES['photo']) && (int)($_FILES['photo']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
         $photoError = (int)($_FILES['photo']['error'] ?? UPLOAD_ERR_NO_FILE);
         if ($photoError !== UPLOAD_ERR_OK) {
@@ -88,6 +90,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!move_uploaded_file((string)$_FILES['photo']['tmp_name'], $destination)) {
                     $errors[] = 'ذخیره تصویر انجام نشد.';
                 } else {
+                    $oldPath = (string)($candidate['photo_path'] ?? '');
+                    if ($oldPath !== '') {
+                        $oldAbsolute = __DIR__ . $oldPath;
+                        if (is_file($oldAbsolute)) {
+                            @unlink($oldAbsolute);
+                        }
+                    }
                     $photoPath = '/uploads/candidates/' . $filename;
                 }
             }
@@ -95,35 +104,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($errors === []) {
-        $pdo->beginTransaction();
-        try {
-            $insertStmt = $pdo->prepare(
-                'INSERT INTO candidates (election_id, full_name, grade, field, photo_path)
-                 VALUES (:election_id, :full_name, :grade, :field, :photo_path)'
-            );
-            $insertStmt->execute([
-                ':election_id' => $electionId,
-                ':full_name' => $formData['full_name'],
-                ':grade' => $formData['grade'],
-                ':field' => $formData['field'],
-                ':photo_path' => $photoPath,
-            ]);
+        $updateStmt = $pdo->prepare(
+            'UPDATE candidates
+             SET full_name = :full_name,
+                 grade = :grade,
+                 field = :field,
+                 photo_path = :photo_path
+             WHERE id = :id'
+        );
+        $updateStmt->execute([
+            ':id' => $candidateId,
+            ':full_name' => $formData['full_name'],
+            ':grade' => $formData['grade'],
+            ':field' => $formData['field'],
+            ':photo_path' => $photoPath !== '' ? $photoPath : null,
+        ]);
 
-            $nowExpr = strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'sqlite'
-                ? "datetime('now','localtime')"
-                : 'NOW()';
-            $activateStmt = $pdo->prepare("UPDATE elections SET is_active = 1, updated_at = {$nowExpr} WHERE id = :id");
-            $activateStmt->execute([':id' => $electionId]);
-
-            $pdo->commit();
-            header('Location: election.php?msg=' . urlencode('کاندیدا با موفقیت اضافه شد.'));
-            exit;
-        } catch (Throwable) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            $errors[] = 'ثبت کاندیدا ناموفق بود.';
-        }
+        header('Location: election.php?msg=' . urlencode('ویرایش کاندیدا با موفقیت انجام شد.'));
+        exit;
     }
 }
 
@@ -134,8 +132,8 @@ require __DIR__ . '/partials/header.php';
     <section class="election-card form-card">
         <div class="section-head with-action">
             <div>
-                <h1>افزودن کاندیدا</h1>
-                <p><?= htmlspecialchars((string)$election['title'], ENT_QUOTES, 'UTF-8') ?></p>
+                <h1>ویرایش کاندیدا</h1>
+                <p>شناسه کاندیدا: <?= $candidateId ?></p>
             </div>
             <a href="election.php" class="btn btn-ghost">بازگشت</a>
         </div>
@@ -148,7 +146,7 @@ require __DIR__ . '/partials/header.php';
 
         <form method="post" enctype="multipart/form-data" class="candidate-form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
-            <input type="hidden" name="election_id" value="<?= $electionId ?>">
+            <input type="hidden" name="id" value="<?= $candidateId ?>">
 
             <label>
                 نام و نام خانوادگی
@@ -175,12 +173,19 @@ require __DIR__ . '/partials/header.php';
                 </select>
             </label>
 
+            <?php if (!empty($candidate['photo_path'])): ?>
+                <div class="current-photo-wrap">
+                    <span>تصویر فعلی</span>
+                    <img src="<?= htmlspecialchars((string)$candidate['photo_path'], ENT_QUOTES, 'UTF-8') ?>" alt="candidate photo" class="current-photo">
+                </div>
+            <?php endif; ?>
+
             <label>
-                تصویر (اختیاری)
+                تصویر جدید (اختیاری)
                 <input type="file" name="photo" accept="image/jpeg,image/png,image/webp">
             </label>
 
-            <button type="submit" class="btn btn-primary">ثبت کاندیدا</button>
+            <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
         </form>
     </section>
 </main>

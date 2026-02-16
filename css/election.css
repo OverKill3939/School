@@ -1,0 +1,408 @@
+:root {
+  --election-primary: #1d4ed8;
+  --election-primary-dark: #1e3a8a;
+  --election-accent: #3b82f6;
+  --election-danger: #b91c1c;
+  --election-bg: #f8fafc;
+  --election-text: #0f172a;
+  --election-muted: #475569;
+  --election-border: #dbe4f0;
+}
+
+.election-page,
+.election-form-page {
+  width: min(1120px, 94vw);
+  margin: 1.5rem auto 3rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.election-hero-card {
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(59, 130, 246, 0.08));
+  border-radius: 18px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.election-hero-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(37, 99, 235, 0.18);
+}
+
+.election-hero-card h1 {
+  margin: 0;
+  font-size: clamp(1.1rem, 2.2vw, 1.5rem);
+  color: var(--election-text);
+}
+
+.election-hero-card .subtitle {
+  margin: 0.45rem 0 0;
+  color: var(--election-muted);
+}
+
+.status-chip {
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.status-chip.is-active {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1e40af;
+  border-color: rgba(37, 99, 235, 0.24);
+}
+
+.status-chip.is-inactive {
+  background: rgba(239, 68, 68, 0.13);
+  color: #991b1b;
+  border-color: rgba(185, 28, 28, 0.26);
+}
+
+.election-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--election-border);
+  border-radius: 16px;
+  padding: 1.1rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.election-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.24);
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.11);
+}
+
+.section-head h2,
+.section-head h1 {
+  margin: 0;
+  color: var(--election-text);
+}
+
+.section-head p {
+  margin: 0.4rem 0 0;
+  color: var(--election-muted);
+}
+
+.section-head.with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.flash {
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  border: 1px solid transparent;
+}
+
+.flash.success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #065f46;
+  border-color: rgba(5, 150, 105, 0.22);
+}
+
+.flash.error {
+  background: rgba(248, 113, 113, 0.12);
+  color: #991b1b;
+  border-color: rgba(185, 28, 28, 0.24);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid #d6e2ef;
+  margin-bottom: 0.9rem;
+}
+
+.eligible-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+  background: white;
+}
+
+.eligible-table thead th {
+  background: linear-gradient(180deg, #f6f9ff 0%, #edf3ff 100%);
+  color: #1e3a8a;
+  font-size: 0.92rem;
+  padding: 0.7rem 0.6rem;
+  text-align: center;
+}
+
+.eligible-table td {
+  border-top: 1px solid #e7eef6;
+  text-align: center;
+  padding: 0.55rem 0.5rem;
+  color: #334155;
+}
+
+.cell-input {
+  width: 100px;
+  border: 1px solid #bdd0e5;
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+  text-align: center;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.cell-input:focus-visible {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+.voted-cell {
+  font-weight: 700;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+  padding: 0.56rem 0.95rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--election-primary), var(--election-accent));
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.24);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 14px 24px rgba(37, 99, 235, 0.3);
+}
+
+.btn-ghost {
+  background: #fff;
+  border-color: #bdd0e5;
+  color: #1f3850;
+}
+
+.btn-ghost:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #dc2626, var(--election-danger));
+  color: #fff;
+  box-shadow: 0 8px 16px rgba(185, 28, 28, 0.24);
+}
+
+.btn-danger:hover {
+  box-shadow: 0 12px 22px rgba(185, 28, 28, 0.3);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.empty-state {
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+  color: #475569;
+  background: #f8fafc;
+}
+
+.candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+
+.candidate-card {
+  border: 1px solid #d6e2ef;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  display: grid;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.candidate-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.28);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+}
+
+.candidate-photo {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  display: block;
+}
+
+.candidate-photo.placeholder {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #e2e8f0, #f8fafc);
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.candidate-body {
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.candidate-body h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.candidate-body p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.candidate-body p.votes {
+  color: #0369a1;
+  font-weight: 700;
+}
+
+.candidate-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.3rem;
+}
+
+.candidate-actions form {
+  margin: 0;
+}
+
+.vote-link-card .copy-row {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin-top: 0.6rem;
+}
+
+.vote-link-card input[type="text"] {
+  flex: 1;
+  min-width: 260px;
+  border: 1px solid #bdd0e5;
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 0.9rem;
+  color: #0f172a;
+  direction: ltr;
+  text-align: left;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.vote-link-card input[type="text"]:focus-visible {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+.danger-zone {
+  border-color: rgba(185, 28, 28, 0.3);
+  background: linear-gradient(145deg, rgba(254, 242, 242, 0.9), rgba(255, 255, 255, 0.95));
+}
+
+.danger-zone h2 {
+  margin: 0;
+  color: #991b1b;
+}
+
+.danger-zone p {
+  margin: 0.45rem 0 0.9rem;
+  color: #7f1d1d;
+}
+
+.form-card {
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+.candidate-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.candidate-form label {
+  display: grid;
+  gap: 0.32rem;
+  color: #1e293b;
+  font-size: 0.92rem;
+}
+
+.candidate-form input[type="text"],
+.candidate-form input[type="file"],
+.candidate-form select {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.58rem 0.72rem;
+  font: inherit;
+  background: #fff;
+}
+
+.current-photo-wrap {
+  display: grid;
+  gap: 0.4rem;
+  color: #334155;
+}
+
+.current-photo {
+  width: 180px;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+}
+
+@media (max-width: 860px) {
+  .section-head.with-action {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .election-hero-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .candidate-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .candidate-actions .btn {
+    width: 100%;
+  }
+}

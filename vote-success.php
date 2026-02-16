@@ -1,16 +1,22 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/auth/helpers.php';
+
+$pageTitle = 'ثبت موفق رأی';
+$extraStyles = ['css/vote.css'];
+
+$count = max(1, (int)($_GET['count'] ?? 1));
+
+require __DIR__ . '/partials/header.php';
 ?>
 
-<main class="container" style="text-align:center; margin:6rem auto; max-width:700px;">
-    <div style="font-size:5rem; margin-bottom:1rem;">✅</div>
-    <h1 style="color:#10b981;">رای شما با موفقیت ثبت شد</h1>
-    <p style="font-size:1.2rem; margin:1.5rem 0; color:#475569;">
-        از مشارکت شما در انتخابات شورای دانش‌آموزی سپاسگزاریم.
-    </p>
-    <a href="vote.php" class="btn btn-primary" style="padding:0.9rem 2rem; font-size:1.1rem;">
-        بازگشت به صفحه اصلی
-    </a>
+<main class="vote-page">
+    <section class="vote-card success-state">
+        <h1>رأی شما با موفقیت ثبت شد</h1>
+        <p>تعداد رأی ثبت شده در این مرحله: <strong><?= $count ?></strong></p>
+        <a href="vote.php" class="btn-submit">بازگشت به صفحه رأی گیری</a>
+    </section>
 </main>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>

@@ -57,19 +57,21 @@ if (!$heroVideo && !empty($videos)) {
     array_shift($videos);
 }
 
-$displayImages = $images;
+// جلوگیری از تکرار رسانه اصلی داخل گالری
 if ($heroImage) {
-    $hasHeroInGallery = false;
-    foreach ($displayImages as $img) {
-        if (($img['media_path'] ?? '') === $heroImage) {
-            $hasHeroInGallery = true;
-            break;
-        }
-    }
-    if (!$hasHeroInGallery) {
-        array_unshift($displayImages, ['media_path' => $heroImage, 'media_type' => 'image']);
-    }
+    $images = array_values(array_filter(
+        $images,
+        static fn (array $img): bool => (string)($img['media_path'] ?? '') !== (string)$heroImage
+    ));
 }
+if ($heroVideo) {
+    $videos = array_values(array_filter(
+        $videos,
+        static fn (array $vid): bool => (string)($vid['media_path'] ?? '') !== (string)$heroVideo
+    ));
+}
+
+$displayImages = $images;
 
 // اگر منتشر نشده و کاربر ادمین نیست، اجازه نمایش نده
 if (!$news['is_published'] && (current_user()['role'] ?? '') !== 'admin') {

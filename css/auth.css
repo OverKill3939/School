@@ -58,7 +58,13 @@ body::after {
   overflow: hidden;
   padding: 2rem 1.8rem;
   background:
-    linear-gradient(160deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 64, 175, 0.8) 55%, rgba(8, 47, 73, 0.84) 100%);
+    linear-gradient(118deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 34%, rgba(255, 255, 255, 0.1) 100%),
+    linear-gradient(142deg, #0f2c78 0%, #1f4db7 26%, #3a84f1 50%, #2b6dd4 74%, #0d557f 100%);
+  background-size: 180% 180%, 240% 240%;
+  background-position: 0% 15%, 0% 50%;
+  background-blend-mode: soft-light, normal;
+  animation: auth-visual-colorflow 14s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  will-change: background-position;
   color: #f8fbff;
   display: grid;
   align-content: start;
@@ -67,26 +73,28 @@ body::after {
 
 .auth-visual::before,
 .auth-visual::after {
-  content: "";
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
+  content: none;
 }
 
-.auth-visual::before {
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0));
-  top: -70px;
-  right: -50px;
+@keyframes auth-visual-colorflow {
+  0% {
+    background-position: 0% 15%, 0% 50%;
+  }
+  30% {
+    background-position: 88% 82%, 42% 44%;
+  }
+  65% {
+    background-position: 22% 22%, 74% 62%;
+  }
+  100% {
+    background-position: 100% 86%, 100% 50%;
+  }
 }
 
-.auth-visual::after {
-  width: 260px;
-  height: 260px;
-  background: radial-gradient(circle, rgba(45, 212, 191, 0.28), rgba(45, 212, 191, 0));
-  bottom: -80px;
-  left: -70px;
+@media (prefers-reduced-motion: reduce) {
+  .auth-visual {
+    animation: none;
+  }
 }
 
 .auth-kicker {

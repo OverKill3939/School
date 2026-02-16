@@ -192,6 +192,70 @@ CREATE TABLE IF NOT EXISTS schedule_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL;
 
+    $electionsSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS elections (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL DEFAULT 'Student Council Election',
+    year SMALLINT UNSIGNED NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_elections_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+
+    $eligibleSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS election_eligible (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    election_id BIGINT UNSIGNED NOT NULL,
+    grade TINYINT UNSIGNED NOT NULL,
+    field VARCHAR(80) NOT NULL,
+    eligible_count INT UNSIGNED NOT NULL DEFAULT 0,
+    voted_count INT UNSIGNED NOT NULL DEFAULT 0,
+    votes_per_student TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_eligible_election_grade_field (election_id, grade, field),
+    INDEX idx_eligible_election (election_id),
+    CONSTRAINT fk_eligible_election FOREIGN KEY (election_id)
+        REFERENCES elections(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+
+    $candidatesSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS candidates (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    election_id BIGINT UNSIGNED NOT NULL,
+    full_name VARCHAR(180) NOT NULL,
+    grade TINYINT UNSIGNED NOT NULL,
+    field VARCHAR(80) NOT NULL,
+    photo_path VARCHAR(255) NULL,
+    votes INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_candidates_election (election_id),
+    CONSTRAINT fk_candidates_election FOREIGN KEY (election_id)
+        REFERENCES elections(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+
+    $votesSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS votes (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    election_id BIGINT UNSIGNED NOT NULL,
+    candidate_id BIGINT UNSIGNED NOT NULL,
+    grade TINYINT UNSIGNED NOT NULL,
+    field VARCHAR(80) NOT NULL,
+    voter_key VARCHAR(64) NOT NULL DEFAULT '',
+    voted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_votes_election_candidate (election_id, candidate_id),
+    INDEX idx_votes_grade_field (grade, field),
+    INDEX idx_votes_voter (election_id, grade, field, voter_key),
+    CONSTRAINT fk_votes_election FOREIGN KEY (election_id)
+        REFERENCES elections(id) ON DELETE CASCADE,
+    CONSTRAINT fk_votes_candidate FOREIGN KEY (candidate_id)
+        REFERENCES candidates(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+
     $pdo->exec($usersSql);
     $pdo->exec($eventsSql);
     $pdo->exec($logsSql);
@@ -200,10 +264,15 @@ SQL;
     $pdo->exec($newsMediaSql);
     $pdo->exec($schedulesSql);
     $pdo->exec($scheduleHistorySql);
+    $pdo->exec($electionsSql);
+    $pdo->exec($eligibleSql);
+    $pdo->exec($candidatesSql);
+    $pdo->exec($votesSql);
 
     ensure_schedule_history_columns_mysql($pdo);
     ensure_news_columns_mysql($pdo);
     ensure_news_media_columns_mysql($pdo);
+    ensure_election_columns_mysql($pdo);
 }
 
 function ensure_schedule_history_columns_mysql(PDO $pdo): void
@@ -238,6 +307,42 @@ function ensure_schedule_history_columns_mysql(PDO $pdo): void
     $indexExists = $indexExistsStmt->fetch();
     if ($indexExists === false) {
         $pdo->exec('CREATE INDEX idx_schedule_history_action ON schedule_history(action)');
+    }
+}
+
+function ensure_election_columns_mysql(PDO $pdo): void
+{
+    $eligibleColumns = [];
+    $eligibleStmt = $pdo->query('SHOW COLUMNS FROM election_eligible');
+    foreach ($eligibleStmt->fetchAll() as $row) {
+        $name = (string)($row['Field'] ?? '');
+        if ($name !== '') {
+            $eligibleColumns[$name] = true;
+        }
+    }
+
+    if (!isset($eligibleColumns['votes_per_student'])) {
+        $pdo->exec('ALTER TABLE election_eligible ADD COLUMN votes_per_student TINYINT UNSIGNED NOT NULL DEFAULT 1 AFTER voted_count');
+    }
+
+    $voteColumns = [];
+    $voteStmt = $pdo->query('SHOW COLUMNS FROM votes');
+    foreach ($voteStmt->fetchAll() as $row) {
+        $name = (string)($row['Field'] ?? '');
+        if ($name !== '') {
+            $voteColumns[$name] = true;
+        }
+    }
+
+    if (!isset($voteColumns['voter_key'])) {
+        $pdo->exec("ALTER TABLE votes ADD COLUMN voter_key VARCHAR(64) NOT NULL DEFAULT '' AFTER field");
+    }
+
+    $indexExistsStmt = $pdo->prepare("SHOW INDEX FROM votes WHERE Key_name = :key_name");
+    $indexExistsStmt->execute([':key_name' => 'idx_votes_voter']);
+    $indexExists = $indexExistsStmt->fetch();
+    if ($indexExists === false) {
+        $pdo->exec('CREATE INDEX idx_votes_voter ON votes(election_id, grade, field, voter_key)');
     }
 }
 
@@ -403,6 +508,7 @@ CREATE TABLE IF NOT EXISTS election_eligible (
     field           TEXT NOT NULL CHECK(field IN ('شبکه و نرم افزار', 'برق', 'الکترونیک')),
     eligible_count  INTEGER NOT NULL CHECK(eligible_count >= 0),
     voted_count     INTEGER NOT NULL DEFAULT 0 CHECK(voted_count >= 0),
+    votes_per_student INTEGER NOT NULL DEFAULT 1 CHECK(votes_per_student >= 1),
     created_at      TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (election_id) REFERENCES elections(id) ON DELETE CASCADE,
     UNIQUE(election_id, grade, field)
@@ -432,6 +538,7 @@ CREATE TABLE IF NOT EXISTS votes (
     candidate_id INTEGER NOT NULL,
     grade        INTEGER NOT NULL,
     field        TEXT NOT NULL,
+    voter_key    TEXT NOT NULL DEFAULT '',
     voted_at     TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (election_id)  REFERENCES elections(id)   ON DELETE CASCADE,
     FOREIGN KEY (candidate_id) REFERENCES candidates(id)  ON DELETE CASCADE
@@ -482,6 +589,7 @@ SQL;
     // ────────────────────────────────────────────────────────────────
     ensure_schedule_history_columns_sqlite($pdo);
     ensure_news_columns_sqlite($pdo);
+    ensure_election_columns_sqlite($pdo);
 }
 
 function ensure_news_columns_mysql(PDO $pdo): void
@@ -575,4 +683,35 @@ function ensure_schedule_history_columns_sqlite(PDO $pdo): void
         $pdo->exec("ALTER TABLE schedule_history ADD COLUMN action TEXT NOT NULL DEFAULT 'update'");
     }
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_schedule_history_action ON schedule_history(action)');
+}
+
+function ensure_election_columns_sqlite(PDO $pdo): void
+{
+    $eligibleColumns = [];
+    $eligibleStmt = $pdo->query('PRAGMA table_info(election_eligible)');
+    foreach ($eligibleStmt->fetchAll() as $row) {
+        $name = (string)($row['name'] ?? '');
+        if ($name !== '') {
+            $eligibleColumns[$name] = true;
+        }
+    }
+
+    if (!isset($eligibleColumns['votes_per_student'])) {
+        $pdo->exec("ALTER TABLE election_eligible ADD COLUMN votes_per_student INTEGER NOT NULL DEFAULT 1");
+    }
+
+    $voteColumns = [];
+    $voteStmt = $pdo->query('PRAGMA table_info(votes)');
+    foreach ($voteStmt->fetchAll() as $row) {
+        $name = (string)($row['name'] ?? '');
+        if ($name !== '') {
+            $voteColumns[$name] = true;
+        }
+    }
+
+    if (!isset($voteColumns['voter_key'])) {
+        $pdo->exec("ALTER TABLE votes ADD COLUMN voter_key TEXT NOT NULL DEFAULT ''");
+    }
+
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_votes_voter ON votes(election_id, grade, field, voter_key)');
 }

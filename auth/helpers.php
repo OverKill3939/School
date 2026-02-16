@@ -88,6 +88,90 @@ function login_url(): string
     return '/' . $dir . '/login.php';
 }
 
+function app_base_url(): string
+{
+    $config = app_config();
+    $configured = trim((string)($config['app']['base_url'] ?? ''));
+    if ($configured !== '') {
+        return rtrim($configured, '/');
+    }
+
+    $isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    $scheme = $isHttps ? 'https' : 'http';
+
+    $rawHost = (string)($_SERVER['HTTP_HOST'] ?? 'localhost');
+    $host = preg_replace('/[^a-z0-9\.\-:\[\]]/i', '', $rawHost) ?? '';
+    if ($host === '') {
+        $host = 'localhost';
+    }
+
+    return $scheme . '://' . $host;
+}
+
+function gregorian_to_jalali_year(int $gy, int $gm = 1, int $gd = 1): int
+{
+    $gDayMonths = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+
+    if ($gy > 1600) {
+        $jy = 979;
+        $gy -= 1600;
+    } else {
+        $jy = 0;
+        $gy -= 621;
+    }
+
+    $gy2 = ($gm > 2) ? ($gy + 1) : $gy;
+    $days = (365 * $gy)
+        + intdiv($gy2 + 3, 4)
+        - intdiv($gy2 + 99, 100)
+        + intdiv($gy2 + 399, 400)
+        - 80
+        + $gd
+        + $gDayMonths[$gm - 1];
+
+    $jy += 33 * intdiv($days, 12053);
+    $days %= 12053;
+
+    $jy += 4 * intdiv($days, 1461);
+    $days %= 1461;
+
+    if ($days > 365) {
+        $jy += intdiv($days - 1, 365);
+    }
+
+    return $jy;
+}
+
+function persian_year_now(): int
+{
+    apply_app_timezone();
+    $now = new DateTimeImmutable('now');
+    return gregorian_to_jalali_year(
+        (int)$now->format('Y'),
+        (int)$now->format('n'),
+        (int)$now->format('j')
+    );
+}
+
+function display_persian_year(int $year): int
+{
+    if ($year >= 1700) {
+        return gregorian_to_jalali_year($year, 1, 1);
+    }
+
+    return $year;
+}
+
+function grade_label(int $grade): string
+{
+    return match ($grade) {
+        10 => 'دهم',
+        11 => 'یازدهم',
+        12 => 'دوازدهم',
+        default => (string)$grade,
+    };
+}
+
 function start_secure_session(): void
 {
     apply_app_timezone();

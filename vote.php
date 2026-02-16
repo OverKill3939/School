@@ -2,78 +2,173 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/auth/helpers.php';
-// بدون require_login → عمومی است
+start_secure_session();
+
+$allowedGrades = [10, 11, 12];
+$allowedFields = ['شبکه و نرم افزار', 'برق', 'الکترونیک'];
+
+$pageTitle = 'رأی گیری شورای دانش آموزی';
+$activeNav = '';
+$extraStyles = ['css/vote.css'];
+
+$voteError = trim((string)($_SESSION['vote_error'] ?? ''));
+unset($_SESSION['vote_error']);
 
 $pdo = get_db();
+$election = $pdo->query('SELECT * FROM elections WHERE is_active = 1 ORDER BY id DESC LIMIT 1')->fetch();
 
-$election = $pdo->query("SELECT * FROM elections WHERE is_active = 1 LIMIT 1")->fetch();
-if (!$election) {
-    die("<h2 style='text-align:center; margin:100px 20px; color:#dc2626;'>در حال حاضر انتخابات فعالی وجود ندارد.</h2>");
+if ($election) {
+    $candidateCountStmt = $pdo->prepare('SELECT COUNT(*) FROM candidates WHERE election_id = :election_id');
+    $candidateCountStmt->execute([':election_id' => (int)$election['id']]);
+    if ((int)$candidateCountStmt->fetchColumn() === 0) {
+        $nowExpr = strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'sqlite'
+            ? "datetime('now','localtime')"
+            : 'NOW()';
+        $deactivateStmt = $pdo->prepare("UPDATE elections SET is_active = 0, updated_at = {$nowExpr} WHERE id = :id");
+        $deactivateStmt->execute([':id' => (int)$election['id']]);
+        $election = false;
+    }
 }
 
-$electionId = $election['id'];
+$electionId = $election ? (int)$election['id'] : 0;
+$candidates = [];
+$eligibilityMap = [];
 
-$candStmt = $pdo->prepare("SELECT * FROM candidates WHERE election_id = ? ORDER BY field, grade, full_name");
-$candStmt->execute([$electionId]);
-$candidates = $candStmt->fetchAll();
+if ($electionId > 0) {
+    $eligibleStmt = $pdo->prepare(
+        'SELECT grade, field, eligible_count, voted_count, votes_per_student
+         FROM election_eligible
+         WHERE election_id = :election_id'
+    );
+    $eligibleStmt->execute([':election_id' => $electionId]);
+
+    foreach ($eligibleStmt->fetchAll() as $row) {
+        $grade = (int)($row['grade'] ?? 0);
+        $field = (string)($row['field'] ?? '');
+        if (!in_array($grade, $allowedGrades, true) || !in_array($field, $allowedFields, true)) {
+            continue;
+        }
+
+        $key = $grade . '|' . $field;
+        $eligibilityMap[$key] = [
+            'eligible_count' => max(0, (int)($row['eligible_count'] ?? 0)),
+            'voted_count' => max(0, (int)($row['voted_count'] ?? 0)),
+            'votes_per_student' => max(1, (int)($row['votes_per_student'] ?? 1)),
+        ];
+    }
+
+    $candidateStmt = $pdo->prepare(
+        'SELECT id, full_name, grade, field, photo_path, votes
+         FROM candidates
+         WHERE election_id = :election_id
+         ORDER BY field ASC, grade ASC, full_name ASC'
+    );
+    $candidateStmt->execute([':election_id' => $electionId]);
+    $candidates = $candidateStmt->fetchAll();
+}
+
+require __DIR__ . '/partials/header.php';
 ?>
 
-<main class="container" style="max-width:900px; margin:3rem auto;">
-    <h1 style="text-align:center; margin-bottom:0.5rem;">رای‌گیری شورای دانش‌آموزی</h1>
-    <p style="text-align:center; color:#64748b; margin-bottom:2.5rem;">
-        هنرستان فنی دارالفنون شاهرود — <?= $election['title'] ?>
-    </p>
-
-    <?php if (empty($candidates)): ?>
-        <div style="text-align:center; padding:3rem; background:#fef3f2; border-radius:12px;">
-            هنوز کاندیدایی ثبت نشده است.
-        </div>
+<main class="vote-page">
+    <?php if (!$election): ?>
+        <section class="vote-card empty">
+            <h1>رأی گیری در دسترس نیست</h1>
+            <p>در حال حاضر انتخابات فعالی برای رأی گیری وجود ندارد.</p>
+        </section>
+    <?php elseif ($candidates === []): ?>
+        <section class="vote-card empty">
+            <h1>رأی گیری غیرفعال شد</h1>
+            <p>هیچ کاندیدایی ثبت نشده است؛ وضعیت انتخابات به صورت خودکار غیر فعال شد.</p>
+        </section>
     <?php else: ?>
-        <form method="POST" action="vote-submit.php">
-            <input type="hidden" name="election_id" value="<?= $electionId ?>">
+        <section class="vote-hero">
+            <h1>رأی گیری شورای دانش آموزی</h1>
+            <p><?= htmlspecialchars((string)$election['title'], ENT_QUOTES, 'UTF-8') ?> - سال <?= display_persian_year((int)$election['year']) ?></p>
+        </section>
 
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem;">
-                <div>
-                    <label>پایه تحصیلی شما <span style="color:#ef4444;">*</span></label>
-                    <select name="voter_grade" required style="width:100%; padding:0.8rem;">
-                        <option value="">انتخاب کنید</option>
-                        <option value="10">دهم</option>
-                        <option value="11">یازدهم</option>
-                        <option value="12">دوازدهم</option>
-                    </select>
+        <?php if ($voteError !== ''): ?>
+            <section class="vote-card">
+                <div class="vote-error-box"><?= htmlspecialchars($voteError, ENT_QUOTES, 'UTF-8') ?></div>
+            </section>
+        <?php endif; ?>
+
+        <section class="vote-card">
+            <form id="vote-form" method="post" action="vote-submit.php">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="election_id" value="<?= $electionId ?>">
+
+                <div class="vote-meta-grid">
+                    <label>
+                        پایه تحصیلی
+                        <select name="voter_grade" id="voter-grade" required>
+                            <option value="">انتخاب کنید</option>
+                            <?php foreach ($allowedGrades as $grade): ?>
+                                <option value="<?= $grade ?>"><?= htmlspecialchars(grade_label($grade), ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+
+                    <label>
+                        رشته
+                        <select name="voter_field" id="voter-field" required>
+                            <option value="">انتخاب کنید</option>
+                            <?php foreach ($allowedFields as $field): ?>
+                                <option value="<?= htmlspecialchars($field, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($field, ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+
+                    <label>
+                        کد دانش آموز
+                        <input type="text" name="voter_identifier" id="voter-identifier" required maxlength="32" placeholder="مثال: 10125">
+                    </label>
                 </div>
-                <div>
-                    <label>رشته شما <span style="color:#ef4444;">*</span></label>
-                    <select name="voter_field" required style="width:100%; padding:0.8rem;">
-                        <option value="">انتخاب کنید</option>
-                        <option value="شبکه و نرم افزار">شبکه و نرم افزار</option>
-                        <option value="برق">برق</option>
-                        <option value="الکترونیک">الکترونیک</option>
-                    </select>
+
+                <div id="vote-limit-info" class="vote-limit-info">برای مشاهده تعداد رأی مجاز، پایه و رشته را انتخاب کنید.</div>
+
+                <div id="candidate-grid" class="candidate-grid">
+                    <?php foreach ($candidates as $candidate): ?>
+                        <?php
+                            $candidateId = (int)($candidate['id'] ?? 0);
+                            $candidateGrade = (int)($candidate['grade'] ?? 0);
+                            $candidateField = (string)($candidate['field'] ?? '');
+                        ?>
+                        <label class="candidate-option">
+                            <input type="checkbox" name="candidate_ids[]" value="<?= $candidateId ?>" class="candidate-checkbox">
+                            <div class="candidate-content">
+                                <?php if (!empty($candidate['photo_path'])): ?>
+                                    <img
+                                        src="<?= htmlspecialchars((string)$candidate['photo_path'], ENT_QUOTES, 'UTF-8') ?>"
+                                        alt="<?= htmlspecialchars((string)$candidate['full_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                        class="candidate-image"
+                                        loading="lazy"
+                                    >
+                                <?php else: ?>
+                                    <div class="candidate-image placeholder">بدون تصویر</div>
+                                <?php endif; ?>
+
+                                <div class="candidate-info">
+                                    <strong><?= htmlspecialchars((string)$candidate['full_name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <span><?= htmlspecialchars(grade_label($candidateGrade), ENT_QUOTES, 'UTF-8') ?> - <?= htmlspecialchars($candidateField, ENT_QUOTES, 'UTF-8') ?></span>
+                                </div>
+                            </div>
+                        </label>
+                    <?php endforeach; ?>
                 </div>
-            </div>
 
-            <h3 style="margin:2rem 0 1rem;">کاندیدای مورد نظر خود را انتخاب کنید</h3>
+                <button type="submit" class="btn-submit">ثبت رأی</button>
+            </form>
+        </section>
 
-            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:1.2rem;">
-                <?php foreach ($candidates as $c): ?>
-                <label style="display:block; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:1rem; cursor:pointer;">
-                    <input type="radio" name="candidate_id" value="<?= $c['id'] ?>" required style="margin-left:0.5rem;">
-                    <div style="margin-right:2.5rem;">
-                        <strong><?= htmlspecialchars($c['full_name']) ?></strong><br>
-                        <small style="color:#64748b;"><?= $c['grade'] ?> — <?= $c['field'] ?></small>
-                    </div>
-                    <?php if ($c['photo_path']): ?>
-                        <img src="<?= htmlspecialchars($c['photo_path']) ?>" alt="" style="width:80px; height:80px; object-fit:cover; border-radius:8px; margin-top:0.8rem;">
-                    <?php endif; ?>
-                </label>
-                <?php endforeach; ?>
-            </div>
-
-            <button type="submit" class="btn btn-primary" style="width:100%; margin-top:2.5rem; padding:1.1rem; font-size:1.15rem;">
-                ثبت رای من
-            </button>
-        </form>
+        <script>
+            window.voteFormConfig = {
+                eligibility: <?= json_encode($eligibilityMap, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                fields: <?= json_encode($allowedFields, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                grades: <?= json_encode($allowedGrades, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+            };
+        </script>
+        <script src="public/js/vote-form.js"></script>
     <?php endif; ?>
 </main>
 

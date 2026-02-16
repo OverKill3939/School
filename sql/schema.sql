@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(20) NOT NULL UNIQUE,
     national_code CHAR(10) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    profile_image_path VARCHAR(255) NULL,
     role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

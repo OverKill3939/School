@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(20) NOT NULL UNIQUE,
     national_code CHAR(10) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    profile_image_path VARCHAR(255) NULL,
     role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -269,6 +270,7 @@ SQL;
     $pdo->exec($candidatesSql);
     $pdo->exec($votesSql);
 
+    ensure_user_columns_mysql($pdo);
     ensure_schedule_history_columns_mysql($pdo);
     ensure_news_columns_mysql($pdo);
     ensure_news_media_columns_mysql($pdo);
@@ -359,6 +361,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone           TEXT NOT NULL UNIQUE,
     national_code   TEXT NOT NULL UNIQUE,
     password_hash   TEXT NOT NULL,
+    profile_image_path TEXT NULL,
     role            TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'user')),
     created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -587,9 +590,42 @@ SQL;
     // ────────────────────────────────────────────────────────────────
     // اضافه کردن ستون‌های جدید به schedule_history در صورت نبود
     // ────────────────────────────────────────────────────────────────
+    ensure_user_columns_sqlite($pdo);
     ensure_schedule_history_columns_sqlite($pdo);
     ensure_news_columns_sqlite($pdo);
     ensure_election_columns_sqlite($pdo);
+}
+
+function ensure_user_columns_mysql(PDO $pdo): void
+{
+    $columns = [];
+    $stmt = $pdo->query('SHOW COLUMNS FROM users');
+    foreach ($stmt->fetchAll() as $row) {
+        $name = (string)($row['Field'] ?? '');
+        if ($name !== '') {
+            $columns[$name] = true;
+        }
+    }
+
+    if (!isset($columns['profile_image_path'])) {
+        $pdo->exec("ALTER TABLE users ADD COLUMN profile_image_path VARCHAR(255) NULL AFTER password_hash");
+    }
+}
+
+function ensure_user_columns_sqlite(PDO $pdo): void
+{
+    $columns = [];
+    $stmt = $pdo->query('PRAGMA table_info(users)');
+    foreach ($stmt->fetchAll() as $row) {
+        $name = (string)($row['name'] ?? '');
+        if ($name !== '') {
+            $columns[$name] = true;
+        }
+    }
+
+    if (!isset($columns['profile_image_path'])) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN profile_image_path TEXT NULL');
+    }
 }
 
 function ensure_news_columns_mysql(PDO $pdo): void

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/upload.php';
 
 
 function app_config(): array
@@ -106,6 +107,35 @@ function app_base_url(): string
     }
 
     return $scheme . '://' . $host;
+}
+
+function default_profile_image_path(): string
+{
+    return 'img/waguri111.jpg';
+}
+
+function sanitize_profile_image_path(?string $path): ?string
+{
+    $value = trim((string)$path);
+    if ($value === '') {
+        return null;
+    }
+
+    if (!str_starts_with($value, '/uploads/')) {
+        return null;
+    }
+
+    if (str_contains($value, '..') || str_contains($value, "\0")) {
+        return null;
+    }
+
+    return $value;
+}
+
+function user_profile_image_url(?array $user): string
+{
+    $path = sanitize_profile_image_path((string)($user['profile_image_path'] ?? ''));
+    return $path ?? default_profile_image_path();
 }
 
 function gregorian_to_jalali_year(int $gy, int $gm = 1, int $gd = 1): int
@@ -335,6 +365,20 @@ function find_user_by_national_code(string $nationalCode): ?array
     return $user ?: null;
 }
 
+function find_user_by_id(int $userId): ?array
+{
+    if ($userId <= 0) {
+        return null;
+    }
+
+    $pdo = get_db();
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE id = :id LIMIT 1');
+    $stmt->execute(['id' => $userId]);
+    $user = $stmt->fetch();
+
+    return $user ?: null;
+}
+
 function create_user(array $data): array
 {
     $pdo = get_db();
@@ -362,7 +406,20 @@ function create_user(array $data): array
         'last_name' => $data['last_name'],
         'phone' => $data['phone'],
         'national_code' => $data['national_code'],
+        'profile_image_path' => null,
         'role' => $role,
+    ];
+}
+
+function set_authenticated_user_session(array $user): void
+{
+    $_SESSION['user'] = [
+        'id' => (int)$user['id'],
+        'first_name' => $user['first_name'],
+        'last_name' => $user['last_name'],
+        'national_code' => $user['national_code'],
+        'role' => $user['role'],
+        'profile_image_path' => sanitize_profile_image_path((string)($user['profile_image_path'] ?? '')),
     ];
 }
 
@@ -370,13 +427,113 @@ function login_user(array $user): void
 {
     start_secure_session();
     session_regenerate_id(true);
+    set_authenticated_user_session($user);
+}
 
-    $_SESSION['user'] = [
-        'id' => (int)$user['id'],
-        'first_name' => $user['first_name'],
-        'last_name' => $user['last_name'],
-        'national_code' => $user['national_code'],
-        'role' => $user['role'],
+function refresh_current_user_session(): void
+{
+    start_secure_session();
+    $sessionUser = $_SESSION['user'] ?? null;
+    $userId = (int)($sessionUser['id'] ?? 0);
+    if ($userId <= 0) {
+        return;
+    }
+
+    $freshUser = find_user_by_id($userId);
+    if ($freshUser === null) {
+        return;
+    }
+
+    set_authenticated_user_session($freshUser);
+}
+
+function delete_profile_image_file(string $path): void
+{
+    $safePath = sanitize_profile_image_path($path);
+    if ($safePath === null) {
+        return;
+    }
+
+    $absolutePath = __DIR__ . '/..' . $safePath;
+    if (is_file($absolutePath)) {
+        @unlink($absolutePath);
+    }
+}
+
+function save_user_profile_image(int $userId, array $file): array
+{
+    if ($userId <= 0) {
+        return [
+            'ok' => false,
+            'message' => 'کاربر نامعتبر است.',
+        ];
+    }
+
+    $uploadError = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
+    if ($uploadError === UPLOAD_ERR_NO_FILE) {
+        return [
+            'ok' => false,
+            'message' => 'لطفا یک تصویر انتخاب کنید.',
+        ];
+    }
+
+    if ($uploadError !== UPLOAD_ERR_OK) {
+        return [
+            'ok' => false,
+            'message' => 'خطا در آپلود فایل. دوباره تلاش کنید.',
+        ];
+    }
+
+    $newPath = upload_media(
+        $file,
+        ['jpg', 'jpeg', 'png', 'webp'],
+        ['image/jpeg', 'image/png', 'image/webp'],
+        'profiles',
+        3,
+        'profile'
+    );
+
+    if ($newPath === null) {
+        return [
+            'ok' => false,
+            'message' => 'فرمت تصویر نامعتبر است یا حجم فایل بیشتر از 3 مگابایت است.',
+        ];
+    }
+
+    $currentUser = find_user_by_id($userId);
+    if ($currentUser === null) {
+        delete_profile_image_file($newPath);
+        return [
+            'ok' => false,
+            'message' => 'کاربر پیدا نشد.',
+        ];
+    }
+
+    try {
+        $pdo = get_db();
+        $stmt = $pdo->prepare('UPDATE users SET profile_image_path = :profile_image_path WHERE id = :id');
+        $stmt->execute([
+            'profile_image_path' => $newPath,
+            'id' => $userId,
+        ]);
+    } catch (Throwable) {
+        delete_profile_image_file($newPath);
+        return [
+            'ok' => false,
+            'message' => 'ذخیره تصویر در دیتابیس انجام نشد.',
+        ];
+    }
+
+    $oldPath = sanitize_profile_image_path((string)($currentUser['profile_image_path'] ?? ''));
+    if ($oldPath !== null && $oldPath !== $newPath) {
+        delete_profile_image_file($oldPath);
+    }
+
+    refresh_current_user_session();
+
+    return [
+        'ok' => true,
+        'path' => $newPath,
     ];
 }
 

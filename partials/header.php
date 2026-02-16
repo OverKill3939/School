@@ -7,6 +7,7 @@ start_secure_session();
 $pageTitle = $pageTitle ?? 'هنرستان دارالفنون';
 $activeNav = $activeNav ?? '';
 $user = current_user();
+$profileImage = user_profile_image_url($user);
 ?>
 <!doctype html>
 <html lang="fa" dir="rtl">
@@ -70,10 +71,10 @@ $user = current_user();
           </span>
           <details class="profile-menu">
             <summary class="profile-trigger" aria-label="منوی پروفایل" title="منوی پروفایل">
-              <img src="img/waguri111.jpg" alt="" aria-hidden="true" />
+              <img src="<?= htmlspecialchars($profileImage, ENT_QUOTES, 'UTF-8') ?>" alt="" aria-hidden="true" />
             </summary>
             <div class="profile-menu-list">
-              <a href="#" class="profile-item settings">تنظیمات</a>
+              <a href="profile-settings.php" class="profile-item settings <?= $activeNav === 'profile-settings' ? 'active' : '' ?>">تنظیمات</a>
               <a href="logout.php" class="profile-item logout danger">خروج</a>
             </div>
           </details>

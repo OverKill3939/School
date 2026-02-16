@@ -65,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
 
                 login_user($newUser);
+                mark_notification_permission_prompt();
                 log_auth_event('register', true, (int)$newUser['id'], $form['national_code']);
                 header('Location: index.php');
                 exit;

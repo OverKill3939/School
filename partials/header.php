@@ -8,6 +8,7 @@ $pageTitle = $pageTitle ?? 'هنرستان دارالفنون';
 $activeNav = $activeNav ?? '';
 $user = current_user();
 $profileImage = user_profile_image_url($user);
+$shouldPromptNotificationPermission = $user ? consume_notification_permission_prompt() : false;
 ?>
 <!doctype html>
 <html lang="fa" dir="rtl">
@@ -22,7 +23,10 @@ $profileImage = user_profile_image_url($user);
     <?php endforeach; ?>
   <?php endif; ?>
 </head>
-<body>
+<body
+  data-user-logged-in="<?= $user ? '1' : '0' ?>"
+  data-notify-permission-prompt="<?= $shouldPromptNotificationPermission ? '1' : '0' ?>"
+>
   <header class="site-header">
     <div class="header-main">
       <div class="brand">

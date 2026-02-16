@@ -244,6 +244,20 @@ function csrf_check(?string $token): bool
     return hash_equals($_SESSION['csrf_token'], $token);
 }
 
+function mark_notification_permission_prompt(): void
+{
+    start_secure_session();
+    $_SESSION['notification_permission_prompt'] = 1;
+}
+
+function consume_notification_permission_prompt(): bool
+{
+    start_secure_session();
+    $pending = !empty($_SESSION['notification_permission_prompt']);
+    unset($_SESSION['notification_permission_prompt']);
+    return $pending;
+}
+
 function is_logged_in(): bool
 {
     start_secure_session();

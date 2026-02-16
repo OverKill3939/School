@@ -29,6 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 log_auth_event('login', false, $user['id'] ?? null, $nationalCode);
             } else {
                 login_user($user);
+                mark_notification_permission_prompt();
                 log_auth_event('login', true, (int)$user['id'], $nationalCode);
                 header('Location: index.php');
                 exit;

@@ -20,8 +20,16 @@ main.home-page {
   animation-delay: var(--section-delay, 0ms);
 }
 
-.home-page.home-entrance-ready .hero-copy,
-.home-page.home-entrance-ready .hero-actions .cta,
+.home-page.home-entrance-ready .home-hero {
+  opacity: 0;
+  transform: translateY(34px) rotateX(4deg) translateZ(-34px);
+}
+
+.home-page.home-entrance-play .home-hero {
+  animation: homeHeroReveal 860ms cubic-bezier(0.2, 0.88, 0.2, 1) both;
+  animation-delay: var(--hero-delay, 90ms);
+}
+
 .home-page.home-entrance-ready .stat-card,
 .home-page.home-entrance-ready .section-head,
 .home-page.home-entrance-ready .home-news .news-card,
@@ -33,7 +41,6 @@ main.home-page {
   will-change: transform, opacity;
 }
 
-.home-page.home-entrance-play .hero-copy,
 .home-page.home-entrance-play .section-head,
 .home-page.home-entrance-play .home-quick h2,
 .home-page.home-entrance-play .home-news .empty-state {
@@ -41,13 +48,11 @@ main.home-page {
   animation-delay: calc(var(--section-delay, 0ms) + 150ms);
 }
 
-.home-page.home-entrance-play .hero-actions .cta,
 .home-page.home-entrance-play .stat-card,
 .home-page.home-entrance-play .home-news .news-card,
 .home-page.home-entrance-play .quick-link {
   animation: homeItemCascade 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: calc(var(--section-delay, 0ms) + 220ms + var(--item-delay, 0ms));
-}
 }
 
 .home-hero {
@@ -357,6 +362,21 @@ main.home-page {
   }
 }
 
+@keyframes homeHeroReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(34px) rotateX(4deg) translateZ(-34px);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(-2px) rotateX(0deg) translateZ(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotateX(0deg) translateZ(0);
+  }
+}
+
 @keyframes homeInnerReveal {
   0% {
     opacity: 0;
@@ -380,8 +400,6 @@ main.home-page {
 }
 
 .home-page.home-entrance-done > section,
-.home-page.home-entrance-done .hero-copy,
-.home-page.home-entrance-done .hero-actions .cta,
 .home-page.home-entrance-done .stat-card,
 .home-page.home-entrance-done .section-head,
 .home-page.home-entrance-done .home-news .news-card,
@@ -405,7 +423,6 @@ main.home-page {
   animation-duration: 520ms;
 }
 
-.home-page.home-entrance-lite.home-entrance-play .hero-actions .cta,
 .home-page.home-entrance-lite.home-entrance-play .stat-card,
 .home-page.home-entrance-lite.home-entrance-play .home-news .news-card,
 .home-page.home-entrance-lite.home-entrance-play .quick-link {
@@ -414,8 +431,6 @@ main.home-page {
 
 @media (prefers-reduced-motion: reduce) {
   .home-page.home-entrance-play > section,
-  .home-page.home-entrance-play .hero-copy,
-  .home-page.home-entrance-play .hero-actions .cta,
   .home-page.home-entrance-play .stat-card,
   .home-page.home-entrance-play .section-head,
   .home-page.home-entrance-play .home-news .news-card,
@@ -426,8 +441,6 @@ main.home-page {
   }
 
   .home-page.home-entrance-ready > section,
-  .home-page.home-entrance-ready .hero-copy,
-  .home-page.home-entrance-ready .hero-actions .cta,
   .home-page.home-entrance-ready .stat-card,
   .home-page.home-entrance-ready .section-head,
   .home-page.home-entrance-ready .home-news .news-card,

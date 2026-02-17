@@ -4,7 +4,7 @@
     return;
   }
 
-  const sections = Array.from(page.querySelectorAll(':scope > section'));
+  const sections = Array.from(page.children).filter((el) => el.tagName === 'SECTION');
   if (sections.length === 0) {
     return;
   }
@@ -21,9 +21,15 @@
     page.classList.add('home-entrance-lite');
   }
 
+  const baseSectionDelay = liteMode ? 60 : 90;
   sections.forEach((section, sectionIndex) => {
-    section.style.setProperty('--section-delay', `${sectionIndex * (liteMode ? 140 : 200)}ms`);
+    section.style.setProperty('--section-delay', `${baseSectionDelay + sectionIndex * (liteMode ? 140 : 200)}ms`);
   });
+
+  const hero = page.querySelector('.home-hero');
+  if (hero) {
+    hero.style.setProperty('--hero-delay', `${liteMode ? 60 : 90}ms`);
+  }
 
   const setDelayWithCap = (elements, stepNormal, stepLite) => {
     elements.forEach((element, index) => {

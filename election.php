@@ -9,7 +9,8 @@ $allowedFields = ['شبکه و نرم افزار', 'برق', 'الکترونیک
 
 $pageTitle = 'مدیریت انتخابات | هنرستان دارالفنون';
 $activeNav = 'election';
-$extraStyles = ['css/election.css'];
+$extraStyles = ['css/election.css?v=' . filemtime(__DIR__ . '/css/election.css')];
+$extraScripts = ['js/election-entrance.js?v=' . filemtime(__DIR__ . '/js/election-entrance.js')];
 
 $pdo = get_db();
 

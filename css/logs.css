@@ -1,26 +1,155 @@
-.logs-page {
+main.logs-page {
+  --pointer-x: 50%;
+  --pointer-y: 0%;
   width: min(1160px, 94vw);
   margin: 5rem auto 3rem;
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 550ms ease, transform 550ms ease;
+  position: relative;
+  isolation: isolate;
+  perspective: 1100px;
 }
 
-body.is-loaded .logs-page {
-  opacity: 1;
-  transform: translateY(0);
+main.logs-page::before,
+main.logs-page::after {
+  content: "";
+  position: absolute;
+  inset: -2.2rem -1rem;
+  pointer-events: none;
+}
+
+main.logs-page::before {
+  z-index: -2;
+  background:
+    radial-gradient(700px 380px at var(--pointer-x) var(--pointer-y), rgba(37, 99, 235, 0.18), transparent 62%),
+    radial-gradient(480px 300px at 15% 12%, rgba(14, 165, 233, 0.1), transparent 68%),
+    radial-gradient(540px 320px at 85% 88%, rgba(56, 189, 248, 0.14), transparent 70%);
+  animation: logsAuroraShift 13s ease-in-out infinite alternate;
+}
+
+main.logs-page::after {
+  z-index: -1;
+  opacity: 0.38;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 42%),
+    repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.08) 0px, rgba(148, 163, 184, 0.08) 1px, transparent 1px, transparent 34px),
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.06) 0px, rgba(148, 163, 184, 0.06) 1px, transparent 1px, transparent 34px);
+  mask-image: radial-gradient(circle at 50% 52%, rgba(0, 0, 0, 0.84), transparent 86%);
+  animation: logsGridDrift 16s linear infinite;
+}
+
+/* Remove decorative back layers behind cards */
+main.logs-page::before,
+main.logs-page::after,
+.logs-card::after {
+  content: none;
+  display: none;
+  animation: none;
+}
+
+.logs-page.logs-entrance-ready > section {
+  opacity: 0;
+  transform: translateY(28px) rotateX(4deg) translateZ(-34px);
+  will-change: transform, opacity;
+}
+
+.logs-page.logs-entrance-play > section {
+  animation: logsCardReveal 760ms cubic-bezier(0.2, 0.88, 0.2, 1) both;
+  animation-delay: var(--card-delay, 0ms);
 }
 
 .logs-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.9));
-  border: 1px solid var(--stroke);
+  position: relative;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.88)),
+    radial-gradient(220px 120px at 90% -10%, rgba(56, 189, 248, 0.2), transparent 72%),
+    radial-gradient(260px 130px at 10% 120%, rgba(37, 99, 235, 0.16), transparent 76%);
+  border: 1px solid rgba(148, 163, 184, 0.36);
   border-radius: 24px;
-  box-shadow: 0 22px 46px rgba(15, 23, 42, 0.12);
+  box-shadow:
+    0 26px 56px rgba(15, 23, 42, 0.16),
+    0 8px 20px rgba(37, 99, 235, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(6px);
   padding: 1.4rem;
+  transition: transform 320ms ease, box-shadow 320ms ease;
+}
+
+.logs-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(120deg, rgba(37, 99, 235, 0.42), rgba(14, 165, 233, 0.08), rgba(37, 99, 235, 0.35));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.logs-card::after {
+  content: "";
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  top: -120px;
+  left: -80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.16) 0%, rgba(59, 130, 246, 0) 74%);
+  pointer-events: none;
+  animation: logsOrbFloat 9s ease-in-out infinite;
+}
+
+.logs-page.logs-entrance-play .logs-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 30px 60px rgba(15, 23, 42, 0.18),
+    0 10px 24px rgba(37, 99, 235, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.66);
 }
 
 .auth-logs-card {
   margin-top: 1.8rem;
+}
+
+.logs-page.logs-entrance-ready .logs-head,
+.logs-page.logs-entrance-ready .logs-filters > *,
+.logs-page.logs-entrance-ready .logs-meta,
+.logs-page.logs-entrance-ready .logs-table-wrap,
+.logs-page.logs-entrance-ready .logs-pagination {
+  opacity: 0;
+  transform: translateY(14px);
+  will-change: transform, opacity;
+}
+
+.logs-page.logs-entrance-play .logs-head,
+.logs-page.logs-entrance-play .logs-meta,
+.logs-page.logs-entrance-play .logs-table-wrap,
+.logs-page.logs-entrance-play .logs-pagination {
+  animation: logsInnerReveal 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.logs-page.logs-entrance-play .logs-head {
+  animation-delay: calc(var(--card-delay, 0ms) + 180ms);
+}
+
+.logs-page.logs-entrance-play .logs-meta {
+  animation-delay: calc(var(--card-delay, 0ms) + 240ms);
+}
+
+.logs-page.logs-entrance-play .logs-table-wrap {
+  animation-delay: calc(var(--card-delay, 0ms) + 300ms);
+}
+
+.logs-page.logs-entrance-play .logs-pagination {
+  animation-delay: calc(var(--card-delay, 0ms) + 420ms);
+}
+
+.logs-page.logs-entrance-play .logs-filters > * {
+  animation: logsInnerReveal 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--card-delay, 0ms) + 210ms + var(--filter-delay, 0ms));
 }
 
 .logs-head h1 {
@@ -174,6 +303,17 @@ body.is-loaded .logs-page {
   background: rgba(37, 99, 235, 0.05);
 }
 
+.logs-page.logs-entrance-ready .logs-table tbody tr {
+  opacity: 0;
+  transform: translateX(14px);
+  will-change: transform, opacity;
+}
+
+.logs-page.logs-entrance-play .logs-table tbody tr {
+  animation: logsRowCascade 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--card-delay, 0ms) + 340ms + var(--row-delay, 0ms));
+}
+
 .logs-table td {
   font-size: 0.88rem;
 }
@@ -295,6 +435,115 @@ body.is-loaded .logs-page {
   gap: 0.6rem;
 }
 
+@keyframes logsAuroraShift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.92;
+  }
+  100% {
+    transform: translate3d(0, -10px, 0) scale(1.03);
+    opacity: 1;
+  }
+}
+
+@keyframes logsGridDrift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(34px, 34px, 0);
+  }
+}
+
+@keyframes logsCardReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) rotateX(4deg) translateZ(-34px);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(-2px) rotateX(0deg) translateZ(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotateX(0deg) translateZ(0);
+  }
+}
+
+@keyframes logsInnerReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes logsRowCascade {
+  0% {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes logsOrbFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(36px, 18px, 0);
+  }
+}
+
+.logs-page.logs-entrance-done > section,
+.logs-page.logs-entrance-done .logs-head,
+.logs-page.logs-entrance-done .logs-filters > *,
+.logs-page.logs-entrance-done .logs-meta,
+.logs-page.logs-entrance-done .logs-table-wrap,
+.logs-page.logs-entrance-done .logs-pagination,
+.logs-page.logs-entrance-done .logs-table tbody tr {
+  will-change: auto;
+}
+
+.logs-row-static {
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+.logs-page.logs-entrance-lite {
+  perspective: none;
+}
+
+.logs-page.logs-entrance-lite::after,
+.logs-page.logs-entrance-lite .logs-card::after {
+  animation: none;
+  opacity: 0.25;
+}
+
+.logs-page.logs-entrance-lite .logs-card {
+  backdrop-filter: none;
+}
+
+.logs-page.logs-entrance-lite.logs-entrance-ready > section {
+  transform: translateY(18px);
+}
+
+.logs-page.logs-entrance-lite.logs-entrance-play > section {
+  animation-duration: 520ms;
+}
+
+.logs-page.logs-entrance-lite.logs-entrance-play .logs-table tbody tr {
+  animation-duration: 320ms;
+}
+
 @media (max-width: 980px) {
   .logs-filters {
     grid-template-columns: 1fr 1fr;
@@ -403,5 +652,33 @@ body.is-loaded .logs-page {
 
   .logs-pagination .page-btn {
     flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main.logs-page::before,
+  main.logs-page::after,
+  .logs-card::after,
+  .logs-page.logs-entrance-play > section,
+  .logs-page.logs-entrance-play .logs-head,
+  .logs-page.logs-entrance-play .logs-filters > *,
+  .logs-page.logs-entrance-play .logs-meta,
+  .logs-page.logs-entrance-play .logs-table-wrap,
+  .logs-page.logs-entrance-play .logs-pagination,
+  .logs-page.logs-entrance-play .logs-table tbody tr {
+    animation: none;
+  }
+
+  .logs-page.logs-entrance-ready > section,
+  .logs-page.logs-entrance-ready .logs-head,
+  .logs-page.logs-entrance-ready .logs-filters > *,
+  .logs-page.logs-entrance-ready .logs-meta,
+  .logs-page.logs-entrance-ready .logs-table-wrap,
+  .logs-page.logs-entrance-ready .logs-pagination,
+  .logs-page.logs-entrance-ready .logs-table tbody tr {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
   }
 }

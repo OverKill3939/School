@@ -6,7 +6,8 @@ require_login();
 
 $pageTitle   = 'داشبورد | هنرستان دارالفنون';
 $activeNav   = 'home';
-$extraStyles = ['css/home.css'];
+$extraStyles = ['css/home.css?v=' . filemtime(__DIR__ . '/css/home.css')];
+$extraScripts = ['js/home-entrance.js?v=' . filemtime(__DIR__ . '/js/home-entrance.js')];
 
 $user    = current_user();
 $isAdmin = ($user['role'] === 'admin');

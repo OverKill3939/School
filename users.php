@@ -67,6 +67,7 @@ $totalNormalUsers = count_users_by_role('user');
 $pageTitle = 'مدیریت کاربران | هنرستان دارالفنون';
 $activeNav = 'users';
 $extraStyles = ['css/users.css?v=' . filemtime(__DIR__ . '/css/users.css')];
+$extraScripts = ['js/users-entrance.js?v=' . filemtime(__DIR__ . '/js/users-entrance.js')];
 
 require __DIR__ . '/partials/header.php';
 ?>

@@ -17,7 +17,69 @@
   gap: 1rem;
 }
 
+main.election-page {
+  --pointer-x: 50%;
+  --pointer-y: 0%;
+  position: relative;
+  isolation: isolate;
+  perspective: 1100px;
+}
+
+main.election-page::before,
+main.election-page::after {
+  content: "";
+  position: absolute;
+  inset: -2.2rem -1rem;
+  pointer-events: none;
+}
+
+main.election-page::before {
+  z-index: -2;
+  background:
+    radial-gradient(700px 380px at var(--pointer-x) var(--pointer-y), rgba(37, 99, 235, 0.18), transparent 62%),
+    radial-gradient(480px 300px at 15% 12%, rgba(14, 165, 233, 0.1), transparent 68%),
+    radial-gradient(540px 320px at 85% 88%, rgba(56, 189, 248, 0.14), transparent 70%);
+  animation: electionAuroraShift 13s ease-in-out infinite alternate;
+}
+
+main.election-page::after {
+  z-index: -1;
+  opacity: 0.38;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 42%),
+    repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.08) 0px, rgba(148, 163, 184, 0.08) 1px, transparent 1px, transparent 34px),
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.06) 0px, rgba(148, 163, 184, 0.06) 1px, transparent 1px, transparent 34px);
+  mask-image: radial-gradient(circle at 50% 52%, rgba(0, 0, 0, 0.84), transparent 86%);
+  animation: electionGridDrift 16s linear infinite;
+}
+
+/* Remove decorative back layers behind cards */
+main.election-page::before,
+main.election-page::after,
+.election-card::after,
+.election-hero-card::after {
+  content: none;
+  display: none;
+  animation: none;
+}
+
+.election-page.election-entrance-ready > section,
+.election-page.election-entrance-ready > .flash {
+  opacity: 0;
+  transform: translateY(28px) rotateX(4deg) translateZ(-34px);
+  will-change: transform, opacity;
+}
+
+.election-page.election-entrance-play > section,
+.election-page.election-entrance-play > .flash {
+  animation: electionCardReveal 760ms cubic-bezier(0.2, 0.88, 0.2, 1) both;
+  animation-delay: var(--section-delay, 0ms);
+}
+
 .election-hero-card {
+  position: relative;
+  overflow: hidden;
+  transform-style: preserve-3d;
   border: 1px solid rgba(37, 99, 235, 0.28);
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(59, 130, 246, 0.08));
   border-radius: 18px;
@@ -28,6 +90,19 @@
   gap: 1rem;
   box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.election-hero-card::after {
+  content: "";
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  top: -110px;
+  left: -70px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(59, 130, 246, 0) 74%);
+  pointer-events: none;
+  animation: electionOrbFloat 9s ease-in-out infinite;
 }
 
 .election-hero-card:hover {
@@ -68,12 +143,31 @@
 }
 
 .election-card {
-  background: rgba(255, 255, 255, 0.95);
+  position: relative;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.92)),
+    radial-gradient(220px 120px at 90% -10%, rgba(56, 189, 248, 0.12), transparent 72%);
   border: 1px solid var(--election-border);
   border-radius: 16px;
   padding: 1.1rem;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(6px);
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.election-card::after {
+  content: "";
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  top: -120px;
+  left: -80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.14) 0%, rgba(59, 130, 246, 0) 74%);
+  pointer-events: none;
+  animation: electionOrbFloat 9s ease-in-out infinite;
 }
 
 .election-card:hover {
@@ -99,6 +193,36 @@
   align-items: center;
   gap: 0.8rem;
   margin-bottom: 1rem;
+}
+
+.election-page.election-entrance-ready .section-head,
+.election-page.election-entrance-ready .status-chip,
+.election-page.election-entrance-ready .table-wrap,
+.election-page.election-entrance-ready .eligible-form > .btn,
+.election-page.election-entrance-ready .candidate-grid,
+.election-page.election-entrance-ready .empty-state,
+.election-page.election-entrance-ready .copy-row,
+.election-page.election-entrance-ready .danger-zone p,
+.election-page.election-entrance-ready .danger-zone form {
+  opacity: 0;
+  transform: translateY(14px);
+  will-change: transform, opacity;
+}
+
+.election-page.election-entrance-play .section-head,
+.election-page.election-entrance-play .table-wrap,
+.election-page.election-entrance-play .copy-row,
+.election-page.election-entrance-play .danger-zone p,
+.election-page.election-entrance-play .danger-zone form,
+.election-page.election-entrance-play .empty-state {
+  animation: electionInnerReveal 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--section-delay, 0ms) + 180ms);
+}
+
+.election-page.election-entrance-play .status-chip,
+.election-page.election-entrance-play .eligible-form > .btn {
+  animation: electionInnerReveal 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--section-delay, 0ms) + 230ms);
 }
 
 .flash {
@@ -146,6 +270,17 @@
   text-align: center;
   padding: 0.55rem 0.5rem;
   color: #334155;
+}
+
+.election-page.election-entrance-ready .eligible-table tbody tr {
+  opacity: 0;
+  transform: translateX(14px);
+  will-change: transform, opacity;
+}
+
+.election-page.election-entrance-play .eligible-table tbody tr {
+  animation: electionRowCascade 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--section-delay, 0ms) + 280ms + var(--row-delay, 0ms));
 }
 
 .cell-input {
@@ -247,6 +382,17 @@
   background: #fff;
   display: grid;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.election-page.election-entrance-ready .candidate-card {
+  opacity: 0;
+  transform: translateY(14px);
+  will-change: transform, opacity;
+}
+
+.election-page.election-entrance-play .candidate-card {
+  animation: electionRowCascade 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--section-delay, 0ms) + 260ms + var(--candidate-delay, 0ms));
 }
 
 .candidate-card:hover {
@@ -384,6 +530,167 @@
   height: auto;
   border-radius: 10px;
   border: 1px solid #cbd5e1;
+}
+
+@keyframes electionAuroraShift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.92;
+  }
+  100% {
+    transform: translate3d(0, -10px, 0) scale(1.03);
+    opacity: 1;
+  }
+}
+
+@keyframes electionGridDrift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(34px, 34px, 0);
+  }
+}
+
+@keyframes electionCardReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) rotateX(4deg) translateZ(-34px);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(-2px) rotateX(0deg) translateZ(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotateX(0deg) translateZ(0);
+  }
+}
+
+@keyframes electionInnerReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes electionRowCascade {
+  0% {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes electionOrbFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(36px, 18px, 0);
+  }
+}
+
+.election-page.election-entrance-done > section,
+.election-page.election-entrance-done > .flash,
+.election-page.election-entrance-done .section-head,
+.election-page.election-entrance-done .status-chip,
+.election-page.election-entrance-done .table-wrap,
+.election-page.election-entrance-done .eligible-table tbody tr,
+.election-page.election-entrance-done .eligible-form > .btn,
+.election-page.election-entrance-done .candidate-card,
+.election-page.election-entrance-done .candidate-grid,
+.election-page.election-entrance-done .empty-state,
+.election-page.election-entrance-done .copy-row,
+.election-page.election-entrance-done .danger-zone p,
+.election-page.election-entrance-done .danger-zone form {
+  will-change: auto;
+}
+
+.election-row-static,
+.election-candidate-static {
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+.election-page.election-entrance-lite {
+  perspective: none;
+}
+
+.election-page.election-entrance-lite::after,
+.election-page.election-entrance-lite .election-card::after,
+.election-page.election-entrance-lite .election-hero-card::after {
+  animation: none;
+  opacity: 0.25;
+}
+
+.election-page.election-entrance-lite .election-card {
+  backdrop-filter: none;
+}
+
+.election-page.election-entrance-lite.election-entrance-ready > section,
+.election-page.election-entrance-lite.election-entrance-ready > .flash {
+  transform: translateY(18px);
+}
+
+.election-page.election-entrance-lite.election-entrance-play > section,
+.election-page.election-entrance-lite.election-entrance-play > .flash {
+  animation-duration: 520ms;
+}
+
+.election-page.election-entrance-lite.election-entrance-play .eligible-table tbody tr,
+.election-page.election-entrance-lite.election-entrance-play .candidate-card {
+  animation-duration: 320ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main.election-page::before,
+  main.election-page::after,
+  .election-card::after,
+  .election-hero-card::after,
+  .election-page.election-entrance-play > section,
+  .election-page.election-entrance-play > .flash,
+  .election-page.election-entrance-play .section-head,
+  .election-page.election-entrance-play .status-chip,
+  .election-page.election-entrance-play .table-wrap,
+  .election-page.election-entrance-play .eligible-table tbody tr,
+  .election-page.election-entrance-play .eligible-form > .btn,
+  .election-page.election-entrance-play .candidate-card,
+  .election-page.election-entrance-play .candidate-grid,
+  .election-page.election-entrance-play .empty-state,
+  .election-page.election-entrance-play .copy-row,
+  .election-page.election-entrance-play .danger-zone p,
+  .election-page.election-entrance-play .danger-zone form {
+    animation: none;
+  }
+
+  .election-page.election-entrance-ready > section,
+  .election-page.election-entrance-ready > .flash,
+  .election-page.election-entrance-ready .section-head,
+  .election-page.election-entrance-ready .status-chip,
+  .election-page.election-entrance-ready .table-wrap,
+  .election-page.election-entrance-ready .eligible-table tbody tr,
+  .election-page.election-entrance-ready .eligible-form > .btn,
+  .election-page.election-entrance-ready .candidate-card,
+  .election-page.election-entrance-ready .candidate-grid,
+  .election-page.election-entrance-ready .empty-state,
+  .election-page.election-entrance-ready .copy-row,
+  .election-page.election-entrance-ready .danger-zone p,
+  .election-page.election-entrance-ready .danger-zone form {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
 }
 
 @media (max-width: 860px) {

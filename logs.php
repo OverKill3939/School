@@ -179,6 +179,7 @@ $actionLabels = [
 $pageTitle = 'لاگ فعالیت‌ها | هنرستان دارالفنون';
 $activeNav = 'logs';
 $extraStyles = ['css/logs.css?v=' . filemtime(__DIR__ . '/css/logs.css')];
+$extraScripts = ['js/logs-entrance.js?v=' . filemtime(__DIR__ . '/js/logs-entrance.js')];
 
 require __DIR__ . '/partials/header.php';
 ?>

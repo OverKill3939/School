@@ -18,3 +18,10 @@ return [
         'base_url' => getenv('APP_BASE_URL') ?: '',
     ],
 ];
+return [
+    'db' => [ /* دیتابیس اصلی */ ],
+    'attendance_db' => [
+        'driver'      => 'sqlite',
+        'sqlite_path' => __DIR__ . '/../data/attendance.sqlite',
+    ],
+];

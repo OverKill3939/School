@@ -1,0 +1,169 @@
+/* css/attendance.css */
+
+.attendance-page {
+    max-width: 1240px;
+    margin: 2.5rem auto;
+    padding: 0 1.25rem;
+}
+
+.attendance-page h1 {
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: #1e40af;
+    margin-bottom: 2rem;
+    position: relative;
+    padding-bottom: 0.75rem;
+}
+
+.attendance-page h1::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    border-radius: 2px;
+}
+
+/* کارت اصلی */
+.card-attendance {
+    background: white;
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card-attendance:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.09);
+}
+
+.card-header-att {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border-bottom: 1px solid #bfdbfe;
+    padding: 1.25rem 1.5rem;
+    font-weight: 600;
+    color: #1e40af;
+}
+
+/* فرم فیلتر */
+.filter-row {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid #e2e8f0;
+}
+
+.filter-row .form-label {
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.filter-row .form-control,
+.filter-row .form-select {
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    padding: 0.65rem 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filter-row .form-control:focus,
+.filter-row .form-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* ردیف اضافه کردن غایب */
+.absent-row {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    transition: all 0.2s ease;
+}
+
+.absent-row:hover {
+    border-color: #bfdbfe;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.08);
+}
+
+.absent-row .form-control {
+    border-radius: 10px;
+}
+
+.hours-group .form-check-input:checked {
+    background-color: #ef4444;
+    border-color: #ef4444;
+}
+
+/* جدول */
+.table-attendance {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.table-attendance thead th {
+    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+    color: #1e293b;
+    font-weight: 600;
+    border: none;
+    padding: 1rem 1.25rem;
+}
+
+.table-attendance td {
+    vertical-align: middle;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.table-attendance tr:hover {
+    background: #f8fafc;
+}
+
+/* دکمه‌ها */
+.btn-primary-att {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    border: none;
+    padding: 0.7rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.25s ease;
+}
+
+.btn-primary-att:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+.btn-outline-danger-att {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.btn-outline-danger-att:hover {
+    background: #fef2f2;
+}
+
+/* مودال */
+.modal-content {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+}
+
+.modal-header {
+    background: #eff6ff;
+    border-bottom: 1px solid #bfdbfe;
+}
+
+.modal-title {
+    color: #1e40af;
+    font-weight: 700;
+}

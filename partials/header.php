@@ -47,6 +47,7 @@ $shouldPromptNotificationPermission = $user ? consume_notification_permission_pr
           <summary>دانش آموزان</summary>
           <div class="students-menu-list">
             <a href="schedule.php" class="schedule <?= $activeNav === 'schedule' ? 'active' : '' ?>">برنامه هفتگی</a>
+            <a href="vote.php" class="vote <?= $activeNav === 'vote' ? 'active' : '' ?>">صندوق رای</a>
           </div>
         </details>
 
@@ -62,6 +63,7 @@ $shouldPromptNotificationPermission = $user ? consume_notification_permission_pr
             <a href="users.php" class="users <?= $activeNav === 'users' ? 'active' : '' ?>">کاربران</a>
             <!-- گزینه جدید: انتخابات فقط برای ادمین -->
             <a href="election.php" class="election <?= $activeNav === 'election' ? 'active' : '' ?>">انتخابات</a>
+            <a href="attendance.php" class="attendance <?= $activeNav === 'attendance' ? 'active' : '' ?>">حضور و غیاب</a>
           </div>
         </details>
         <?php endif; ?>

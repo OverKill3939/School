@@ -425,6 +425,39 @@ function create_user(array $data): array
     ];
 }
 
+function create_user_by_admin(array $data): array
+{
+    $role = (string)($data['role'] ?? 'user');
+    if (!in_array($role, ['admin', 'user'], true)) {
+        throw new RuntimeException('نقش انتخاب شده معتبر نیست.');
+    }
+
+    $pdo = get_db();
+    $stmt = $pdo->prepare(
+        'INSERT INTO users (first_name, last_name, phone, national_code, password_hash, role)
+         VALUES (:first_name, :last_name, :phone, :national_code, :password_hash, :role)'
+    );
+
+    $stmt->execute([
+        'first_name' => $data['first_name'],
+        'last_name' => $data['last_name'],
+        'phone' => $data['phone'],
+        'national_code' => $data['national_code'],
+        'password_hash' => password_hash($data['password'], PASSWORD_DEFAULT),
+        'role' => $role,
+    ]);
+
+    return [
+        'id' => (int)$pdo->lastInsertId(),
+        'first_name' => $data['first_name'],
+        'last_name' => $data['last_name'],
+        'phone' => $data['phone'],
+        'national_code' => $data['national_code'],
+        'profile_image_path' => null,
+        'role' => $role,
+    ];
+}
+
 function set_authenticated_user_session(array $user): void
 {
     $_SESSION['user'] = [
@@ -654,11 +687,16 @@ function delete_calendar_event(int $eventId): bool
     return $stmt->rowCount() > 0;
 }
 
-function log_event_action(?array $actor, string $action, ?int $entityId, ?array $beforeData, ?array $afterData): void
+function log_event_action(?array $actor, string $action, ?int $entityId, ?array $beforeData, ?array $afterData, string $entity = 'calendar_event'): void
 {
     $actorId = (int)($actor['id'] ?? 0);
     if ($actorId <= 0) {
         return;
+    }
+
+    $entity = trim($entity);
+    if ($entity === '' || preg_match('/^[a-z0-9_]{1,40}$/', $entity) !== 1) {
+        $entity = 'calendar_event';
     }
 
     $beforeJson = $beforeData !== null
@@ -680,7 +718,7 @@ function log_event_action(?array $actor, string $action, ?int $entityId, ?array 
 
         $stmt->bindValue(':actor_user_id', $actorId, PDO::PARAM_INT);
         $stmt->bindValue(':action', $action, PDO::PARAM_STR);
-        $stmt->bindValue(':entity', 'calendar_event', PDO::PARAM_STR);
+        $stmt->bindValue(':entity', $entity, PDO::PARAM_STR);
 
         if ($entityId === null) {
             $stmt->bindValue(':entity_id', null, PDO::PARAM_NULL);
@@ -743,6 +781,85 @@ function log_auth_event(string $event, bool $success, ?int $userId, string $nati
     }
 }
 
+function log_user_management_action(?array $actor, string $action, array $target): void
+{
+    if (!in_array($action, ['create', 'delete'], true)) {
+        return;
+    }
+
+    $actorId = (int)($actor['id'] ?? 0);
+    if ($actorId <= 0) {
+        return;
+    }
+
+    $targetUserId = (int)($target['id'] ?? 0);
+    if ($targetUserId <= 0) {
+        $targetUserId = null;
+    }
+    if ($action === 'delete') {
+        $targetUserId = null;
+    }
+
+    $targetRole = (string)($target['role'] ?? 'user');
+    if (!in_array($targetRole, ['admin', 'user'], true)) {
+        $targetRole = 'user';
+    }
+
+    $targetFirstName = mb_substr(trim((string)($target['first_name'] ?? '')), 0, 100);
+    $targetLastName = mb_substr(trim((string)($target['last_name'] ?? '')), 0, 100);
+    $targetPhone = mb_substr(trim((string)($target['phone'] ?? '')), 0, 20);
+    $targetNationalCode = substr(preg_replace('/\D+/', '', (string)($target['national_code'] ?? '')) ?? '', 0, 10);
+    $ip = substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+    $userAgent = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
+
+    try {
+        $pdo = get_db();
+        $stmt = $pdo->prepare(
+            'INSERT INTO user_management_logs (
+                actor_user_id,
+                action,
+                target_user_id,
+                target_first_name,
+                target_last_name,
+                target_phone,
+                target_national_code,
+                target_role,
+                ip_address,
+                user_agent
+             ) VALUES (
+                :actor_user_id,
+                :action,
+                :target_user_id,
+                :target_first_name,
+                :target_last_name,
+                :target_phone,
+                :target_national_code,
+                :target_role,
+                :ip_address,
+                :user_agent
+             )'
+        );
+
+        $stmt->bindValue(':actor_user_id', $actorId, PDO::PARAM_INT);
+        $stmt->bindValue(':action', $action, PDO::PARAM_STR);
+        if ($targetUserId === null) {
+            $stmt->bindValue(':target_user_id', null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue(':target_user_id', $targetUserId, PDO::PARAM_INT);
+        }
+        $stmt->bindValue(':target_first_name', $targetFirstName, PDO::PARAM_STR);
+        $stmt->bindValue(':target_last_name', $targetLastName, PDO::PARAM_STR);
+        $stmt->bindValue(':target_phone', $targetPhone, PDO::PARAM_STR);
+        $stmt->bindValue(':target_national_code', $targetNationalCode, PDO::PARAM_STR);
+        $stmt->bindValue(':target_role', $targetRole, PDO::PARAM_STR);
+        $stmt->bindValue(':ip_address', $ip, PDO::PARAM_STR);
+        $stmt->bindValue(':user_agent', $userAgent, PDO::PARAM_STR);
+        $stmt->execute();
+    } catch (Throwable) {
+        // Do not break user management flow if logging fails.
+    }
+}
+
 function list_users_for_log_filter(): array
 {
     $pdo = get_db();
@@ -753,7 +870,8 @@ function list_users_for_log_filter(): array
 
 function build_event_log_filter_sql(array $filters, array &$params): string
 {
-    $conditions = [];
+    $conditions = ['el.entity = :entity'];
+    $params[':entity'] = 'calendar_event';
 
     if (!empty($filters['action'])) {
         $conditions[] = 'el.action = :action';
@@ -914,6 +1032,86 @@ function count_auth_logs(array $filters): int
     return (int)$stmt->fetchColumn();
 }
 
+function build_user_management_log_filter_sql(array $filters, array &$params): string
+{
+    $conditions = [];
+
+    if (!empty($filters['action'])) {
+        $conditions[] = 'uml.action = :action';
+        $params[':action'] = (string)$filters['action'];
+    }
+
+    if (!empty($filters['actor_id'])) {
+        $conditions[] = 'uml.actor_user_id = :actor_id';
+        $params[':actor_id'] = (int)$filters['actor_id'];
+    }
+
+    if (!empty($filters['from_date'])) {
+        $conditions[] = 'uml.created_at >= :from_date';
+        $params[':from_date'] = (string)$filters['from_date'];
+    }
+
+    if (!empty($filters['to_date'])) {
+        $conditions[] = 'uml.created_at < :to_date';
+        $params[':to_date'] = (string)$filters['to_date'];
+    }
+
+    if ($conditions === []) {
+        return '';
+    }
+
+    return ' WHERE ' . implode(' AND ', $conditions);
+}
+
+function list_user_management_logs(array $filters, int $limit = 20, int $offset = 0): array
+{
+    $pdo = get_db();
+
+    $params = [];
+    $where = build_user_management_log_filter_sql($filters, $params);
+
+    $sql =
+        'SELECT uml.id, uml.actor_user_id, uml.action, uml.target_user_id, uml.target_first_name, uml.target_last_name,
+                uml.target_phone, uml.target_national_code, uml.target_role, uml.ip_address, uml.user_agent, uml.created_at,
+                u.first_name AS actor_first_name, u.last_name AS actor_last_name, u.role AS actor_role
+         FROM user_management_logs uml
+         INNER JOIN users u ON u.id = uml.actor_user_id' .
+        $where .
+        ' ORDER BY uml.id DESC
+          LIMIT :limit OFFSET :offset';
+
+    $stmt = $pdo->prepare($sql);
+
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+
+    $stmt->bindValue(':limit', max(1, $limit), PDO::PARAM_INT);
+    $stmt->bindValue(':offset', max(0, $offset), PDO::PARAM_INT);
+    $stmt->execute();
+
+    $rows = $stmt->fetchAll();
+    return is_array($rows) ? $rows : [];
+}
+
+function count_user_management_logs(array $filters): int
+{
+    $pdo = get_db();
+
+    $params = [];
+    $where = build_user_management_log_filter_sql($filters, $params);
+
+    $sql = 'SELECT COUNT(*) FROM user_management_logs uml' . $where;
+    $stmt = $pdo->prepare($sql);
+
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+
+    $stmt->execute();
+    return (int)$stmt->fetchColumn();
+}
+
 
 function list_users_for_admin(?string $search = null): array
 {
@@ -922,7 +1120,7 @@ function list_users_for_admin(?string $search = null): array
 
     if ($search === '') {
         $stmt = $pdo->query(
-            'SELECT id, first_name, last_name, phone, national_code, role, created_at
+            'SELECT id, first_name, last_name, phone, national_code, profile_image_path, role, created_at
              FROM users
              ORDER BY id DESC'
         );
@@ -932,7 +1130,7 @@ function list_users_for_admin(?string $search = null): array
 
     $term = '%' . mb_substr($search, 0, 80) . '%';
     $stmt = $pdo->prepare(
-        'SELECT id, first_name, last_name, phone, national_code, role, created_at
+        'SELECT id, first_name, last_name, phone, national_code, profile_image_path, role, created_at
          FROM users
          WHERE first_name LIKE :term
             OR last_name LIKE :term
@@ -1000,7 +1198,12 @@ function delete_user_by_admin(int $targetUserId, int $actorUserId): void
     }
 
     $pdo = get_db();
-    $stmt = $pdo->prepare('SELECT id, role FROM users WHERE id = :id LIMIT 1');
+    $stmt = $pdo->prepare(
+        'SELECT id, first_name, last_name, phone, national_code, role, created_at
+         FROM users
+         WHERE id = :id
+         LIMIT 1'
+    );
     $stmt->execute(['id' => $targetUserId]);
     $target = $stmt->fetch();
 
@@ -1009,14 +1212,60 @@ function delete_user_by_admin(int $targetUserId, int $actorUserId): void
     }
 
     $role = (string)$target['role'];
-    if ($role === 'admin' && count_users_by_role('admin') <= 1) {
-        throw new RuntimeException('حداقل یک مدیر باید در سیستم باقی بماند.');
+    if ($role === 'admin') {
+        throw new RuntimeException('حذف مدیر توسط مدیر دیگر مجاز نیست.');
     }
 
     try {
+        $pdo->beginTransaction();
+
+        $dependenciesToReassign = [
+            'UPDATE calendar_events SET created_by = :actor_id WHERE created_by = :target_id',
+            'UPDATE event_logs SET actor_user_id = :actor_id WHERE actor_user_id = :target_id',
+            'UPDATE news SET author_id = :actor_id WHERE author_id = :target_id',
+            'UPDATE schedule_history SET admin_id = :actor_id WHERE admin_id = :target_id',
+        ];
+
+        foreach ($dependenciesToReassign as $sql) {
+            $reassign = $pdo->prepare($sql);
+            $reassign->execute([
+                'actor_id' => $actorUserId,
+                'target_id' => $targetUserId,
+            ]);
+        }
+
+        $clearAuthLogs = $pdo->prepare('UPDATE auth_logs SET user_id = NULL WHERE user_id = :target_id');
+        $clearAuthLogs->execute(['target_id' => $targetUserId]);
+
         $delete = $pdo->prepare('DELETE FROM users WHERE id = :id');
         $delete->execute(['id' => $targetUserId]);
-    } catch (Throwable) {
+        if ($delete->rowCount() < 1) {
+            throw new RuntimeException('کاربر موردنظر پیدا نشد.');
+        }
+
+        log_user_management_action(
+            ['id' => $actorUserId],
+            'delete',
+            [
+                'id' => (int)$target['id'],
+                'first_name' => (string)$target['first_name'],
+                'last_name' => (string)$target['last_name'],
+                'phone' => (string)$target['phone'],
+                'national_code' => (string)$target['national_code'],
+                'role' => (string)$target['role'],
+            ]
+        );
+
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        if ($exception instanceof RuntimeException) {
+            throw $exception;
+        }
+
         throw new RuntimeException('این کاربر به داده‌های دیگر متصل است و قابل حذف نیست.');
     }
 }

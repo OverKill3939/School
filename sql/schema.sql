@@ -43,6 +43,26 @@ CREATE TABLE IF NOT EXISTS event_logs (
         REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS user_management_logs (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    actor_user_id INT UNSIGNED NOT NULL,
+    action ENUM('create', 'delete') NOT NULL,
+    target_user_id INT UNSIGNED NULL,
+    target_first_name VARCHAR(100) NOT NULL DEFAULT '',
+    target_last_name VARCHAR(100) NOT NULL DEFAULT '',
+    target_phone VARCHAR(20) NOT NULL DEFAULT '',
+    target_national_code CHAR(10) NOT NULL DEFAULT '',
+    target_role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+    ip_address VARCHAR(45) NOT NULL DEFAULT '',
+    user_agent VARCHAR(255) NOT NULL DEFAULT '',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_mgmt_logs_created_at (created_at),
+    INDEX idx_user_mgmt_logs_actor (actor_user_id),
+    INDEX idx_user_mgmt_logs_action (action),
+    CONSTRAINT fk_user_mgmt_logs_actor FOREIGN KEY (actor_user_id)
+        REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS schedules (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     grade TINYINT UNSIGNED NOT NULL,

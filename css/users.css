@@ -203,6 +203,18 @@ main.users-page::after,
   background: rgba(241, 245, 249, 0.6);
 }
 
+.toolbar-actions {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.btn-add-user {
+  min-width: 132px;
+}
+
 .alert {
   margin: 0 0 0.75rem;
   border-radius: 12px;
@@ -238,7 +250,9 @@ main.users-page::after,
 }
 
 .users-filters input,
-.role-select {
+.role-select,
+.add-user-form input,
+.add-user-form select {
   height: 42px;
   border-radius: 12px;
   border: 1px solid var(--stroke);
@@ -250,7 +264,9 @@ main.users-page::after,
 }
 
 .users-filters input:focus,
-.role-select:focus {
+.role-select:focus,
+.add-user-form input:focus,
+.add-user-form select:focus {
   outline: none;
   border-color: rgba(37, 99, 235, 0.5);
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
@@ -278,7 +294,7 @@ main.users-page::after,
 .users-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 980px;
+  min-width: 1280px;
 }
 
 .users-table th,
@@ -325,13 +341,36 @@ main.users-page::after,
   width: 68px;
 }
 
-.cell-name {
+.cell-first-name,
+.cell-last-name {
   font-weight: 600;
-  min-width: 180px;
+  min-width: 140px;
+}
+
+.cell-avatar {
+  width: 74px;
+}
+
+.cell-avatar img {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+.cell-image-path {
+  direction: ltr;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  max-width: 250px;
+  overflow-wrap: anywhere;
 }
 
 .cell-actions {
-  min-width: 250px;
+  min-width: 260px;
 }
 
 .role-badge {
@@ -364,6 +403,35 @@ main.users-page::after,
   color: #047857;
   font-size: 0.79rem;
   font-weight: 700;
+}
+
+.admin-lock-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  justify-self: flex-start;
+  border-radius: 999px;
+  padding: 0.26rem 0.68rem;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+  font-size: 0.79rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.admin-lock-label::before {
+  content: "!";
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  background: rgba(245, 158, 11, 0.25);
+  color: #7c2d12;
+  font-size: 0.7rem;
+  font-weight: 800;
 }
 
 .actions-stack {
@@ -459,6 +527,49 @@ main.users-page::after,
 .btn-danger:hover {
   transform: translateY(-2px);
   box-shadow: 0 16px 28px rgba(190, 18, 60, 0.3);
+}
+
+.add-user-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9)),
+    radial-gradient(260px 130px at 6% 10%, rgba(56, 189, 248, 0.14), transparent 72%);
+}
+
+.add-user-panel h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1.05rem;
+}
+
+.add-user-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.add-user-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+
+.add-user-grid label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.add-user-grid .full {
+  grid-column: 1 / -1;
+}
+
+.add-user-actions {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
 }
 
 @keyframes usersAuroraShift {
@@ -615,6 +726,10 @@ main.users-page::after,
   .btn-secondary {
     flex: 1;
   }
+
+  .add-user-grid {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
 }
 
 @media (max-width: 820px) {
@@ -632,6 +747,22 @@ main.users-page::after,
 
   .role-form .role-select {
     flex: 1;
+  }
+
+  .toolbar-actions,
+  .add-user-actions {
+    flex-wrap: wrap;
+  }
+
+  .toolbar-actions .btn-primary,
+  .toolbar-actions .btn-secondary,
+  .add-user-actions .btn-primary,
+  .add-user-actions .btn-secondary {
+    flex: 1;
+  }
+
+  .add-user-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -685,6 +816,19 @@ main.users-page::after,
   .cell-actions::before {
     flex-basis: auto;
     margin-bottom: 0.35rem;
+  }
+
+  .cell-avatar {
+    justify-content: flex-end;
+  }
+
+  .cell-avatar img {
+    width: 42px;
+    height: 42px;
+  }
+
+  .cell-image-path {
+    text-align: left;
   }
 
   .actions-stack {

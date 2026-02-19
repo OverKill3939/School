@@ -114,6 +114,10 @@ main.logs-page::after,
   margin-top: 1.8rem;
 }
 
+.user-management-logs-card {
+  margin-top: 1.8rem;
+}
+
 .logs-page.logs-entrance-ready .logs-head,
 .logs-page.logs-entrance-ready .logs-filters > *,
 .logs-page.logs-entrance-ready .logs-meta,

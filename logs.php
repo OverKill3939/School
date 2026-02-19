@@ -127,6 +127,50 @@ if ($authPage > $authTotalPages) {
 $authOffset = ($authPage - 1) * $authPerPage;
 $authLogs = list_auth_logs($authFilters, $authPerPage, $authOffset);
 
+// ───── User management logs filters
+$userLogAction = (string)($_GET['user_action'] ?? '');
+if (!in_array($userLogAction, ['create', 'delete'], true)) {
+    $userLogAction = '';
+}
+
+$userLogActorId = isset($_GET['user_actor_id']) ? (int)$_GET['user_actor_id'] : 0;
+if ($userLogActorId < 1) {
+    $userLogActorId = 0;
+}
+
+$userLogFromDate = normalize_date_input(isset($_GET['user_from']) ? (string)$_GET['user_from'] : null);
+$userLogToDateInput = normalize_date_input(isset($_GET['user_to']) ? (string)$_GET['user_to'] : null);
+
+$userLogToDateExclusive = null;
+if ($userLogToDateInput !== null) {
+    $parsedUserLog = DateTimeImmutable::createFromFormat('Y-m-d', $userLogToDateInput);
+    if ($parsedUserLog instanceof DateTimeImmutable) {
+        $userLogToDateExclusive = $parsedUserLog->modify('+1 day')->format('Y-m-d');
+    }
+}
+
+$userLogFilters = [
+    'action' => $userLogAction !== '' ? $userLogAction : null,
+    'actor_id' => $userLogActorId > 0 ? $userLogActorId : null,
+    'from_date' => $userLogFromDate,
+    'to_date' => $userLogToDateExclusive,
+];
+
+$userLogPage = isset($_GET['user_page']) ? (int)$_GET['user_page'] : 1;
+if ($userLogPage < 1) {
+    $userLogPage = 1;
+}
+
+$userLogPerPage = 10;
+$userLogTotal = count_user_management_logs($userLogFilters);
+$userLogTotalPages = max(1, (int)ceil($userLogTotal / $userLogPerPage));
+if ($userLogPage > $userLogTotalPages) {
+    $userLogPage = $userLogTotalPages;
+}
+
+$userLogOffset = ($userLogPage - 1) * $userLogPerPage;
+$userManagementLogs = list_user_management_logs($userLogFilters, $userLogPerPage, $userLogOffset);
+
 $authQueryBase = [];
 if ($authEvent !== '') {
     $authQueryBase['auth_event'] = $authEvent;
@@ -148,6 +192,26 @@ $buildAuthPageUrl = static function (int $targetPage) use ($authQueryBase): stri
     $params = $authQueryBase;
     $params['auth_page'] = (string)$targetPage;
     return 'logs.php?' . http_build_query($params);
+};
+
+$userLogQueryBase = [];
+if ($userLogAction !== '') {
+    $userLogQueryBase['user_action'] = $userLogAction;
+}
+if ($userLogActorId > 0) {
+    $userLogQueryBase['user_actor_id'] = (string)$userLogActorId;
+}
+if ($userLogFromDate !== null) {
+    $userLogQueryBase['user_from'] = $userLogFromDate;
+}
+if ($userLogToDateInput !== null) {
+    $userLogQueryBase['user_to'] = $userLogToDateInput;
+}
+
+$buildUserLogPageUrl = static function (int $targetPage) use ($userLogQueryBase): string {
+    $params = $userLogQueryBase;
+    $params['user_page'] = (string)$targetPage;
+    return 'logs.php?' . http_build_query($params) . '#user-management-logs';
 };
 
 $queryBase = [];
@@ -176,6 +240,11 @@ $actionLabels = [
     'delete' => 'حذف',
 ];
 
+$userManagementActionLabels = [
+    'create' => 'افزودن کاربر',
+    'delete' => 'حذف کاربر',
+];
+
 $pageTitle = 'لاگ فعالیت‌ها | هنرستان دارالفنون';
 $activeNav = 'logs';
 $extraStyles = ['css/logs.css?v=' . filemtime(__DIR__ . '/css/logs.css')];
@@ -187,7 +256,7 @@ require __DIR__ . '/partials/header.php';
   <section class="logs-card">
     <div class="logs-head">
       <h1>لاگ فعالیت‌های تقویم</h1>
-      <p>تمام عملیات ایجاد، ویرایش و حذف رویدادها اینجا ثبت می‌شود.</p>
+      <p>تمام عملیات ایجاد، ویرایش و حذف رویدادهای تقویم اینجا ثبت می‌شود.</p>
     </div>
 
     <form method="get" class="logs-filters">
@@ -415,6 +484,115 @@ require __DIR__ . '/partials/header.php';
       <?php endif; ?>
       <?php if ($authPage < $authTotalPages): ?>
         <a class="page-btn" href="<?= htmlspecialchars($buildAuthPageUrl($authPage + 1), ENT_QUOTES, 'UTF-8') ?>">بعدی</a>
+      <?php endif; ?>
+    </div>
+  </section>
+
+  <section class="logs-card user-management-logs-card" id="user-management-logs">
+    <div class="logs-head">
+      <h2>لاگ مدیریت کاربران</h2>
+      <p>ثبت کامل عملیات افزودن و حذف کاربر به‌همراه نام ادمین انجام‌دهنده.</p>
+    </div>
+
+    <form method="get" class="logs-filters">
+      <label>
+        عملیات
+        <select name="user_action">
+          <option value="">همه</option>
+          <option value="create" <?= $userLogAction === 'create' ? 'selected' : '' ?>>افزودن کاربر</option>
+          <option value="delete" <?= $userLogAction === 'delete' ? 'selected' : '' ?>>حذف کاربر</option>
+        </select>
+      </label>
+
+      <label>
+        ادمین
+        <select name="user_actor_id">
+          <option value="">همه</option>
+          <?php foreach ($actors as $actor): ?>
+            <?php $aid = (int)$actor['id']; ?>
+            <option value="<?= $aid ?>" <?= $userLogActorId === $aid ? 'selected' : '' ?>>
+              <?= htmlspecialchars(($actor['first_name'] . ' ' . $actor['last_name'] . ' (' . $actor['role'] . ')'), ENT_QUOTES, 'UTF-8') ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </label>
+
+      <label>
+        از تاریخ
+        <input type="date" name="user_from" value="<?= htmlspecialchars((string)($userLogFromDate ?? ''), ENT_QUOTES, 'UTF-8') ?>" />
+      </label>
+
+      <label>
+        تا تاریخ
+        <input type="date" name="user_to" value="<?= htmlspecialchars((string)($userLogToDateInput ?? ''), ENT_QUOTES, 'UTF-8') ?>" />
+      </label>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn-primary">اعمال</button>
+        <a href="logs.php#user-management-logs" class="btn-secondary">بازنشانی</a>
+      </div>
+    </form>
+
+    <div class="logs-meta">
+      <span>نتایج: <?= $userLogTotal ?></span>
+      <span>صفحه <?= $userLogPage ?> از <?= $userLogTotalPages ?></span>
+    </div>
+
+    <div class="logs-table-wrap">
+      <table class="logs-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>زمان ثبت</th>
+            <th>ادمین</th>
+            <th>عملیات</th>
+            <th>شناسه کاربر هدف</th>
+            <th>نام کاربر هدف</th>
+            <th>نقش هدف</th>
+            <th>کد ملی هدف</th>
+            <th>شماره تلفن هدف</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php if ($userManagementLogs === []): ?>
+            <tr>
+              <td colspan="9" class="empty-cell">موردی یافت نشد.</td>
+            </tr>
+          <?php else: ?>
+            <?php foreach ($userManagementLogs as $row): ?>
+              <tr>
+                <td class="cell-id" data-label="ردیف"><?= (int)$row['id'] ?></td>
+                <td class="cell-time" data-label="زمان ثبت"><?= htmlspecialchars((string)$row['created_at'], ENT_QUOTES, 'UTF-8') ?></td>
+                <td class="cell-user" data-label="ادمین">
+                  <?= htmlspecialchars(($row['actor_first_name'] . ' ' . $row['actor_last_name'] . ' (' . $row['actor_role'] . ')'), ENT_QUOTES, 'UTF-8') ?>
+                </td>
+                <td class="cell-action" data-label="عملیات">
+                  <span class="action-badge action-<?= htmlspecialchars((string)$row['action'], ENT_QUOTES, 'UTF-8') ?>">
+                    <?= htmlspecialchars($userManagementActionLabels[(string)$row['action']] ?? (string)$row['action'], ENT_QUOTES, 'UTF-8') ?>
+                  </span>
+                </td>
+                <td class="cell-event" data-label="شناسه کاربر هدف"><?= htmlspecialchars((string)($row['target_user_id'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
+                <td class="cell-user" data-label="نام کاربر هدف"><?= htmlspecialchars(trim((string)$row['target_first_name'] . ' ' . (string)$row['target_last_name']), ENT_QUOTES, 'UTF-8') ?></td>
+                <td data-label="نقش هدف">
+                  <span class="action-badge <?= (string)$row['target_role'] === 'admin' ? 'action-update' : 'action-success' ?>">
+                    <?= (string)$row['target_role'] === 'admin' ? 'مدیر' : 'کاربر' ?>
+                  </span>
+                </td>
+                <td data-label="کد ملی هدف"><?= htmlspecialchars((string)$row['target_national_code'], ENT_QUOTES, 'UTF-8') ?></td>
+                <td data-label="شماره تلفن هدف"><?= htmlspecialchars((string)$row['target_phone'], ENT_QUOTES, 'UTF-8') ?></td>
+              </tr>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="logs-pagination">
+      <?php if ($userLogPage > 1): ?>
+        <a class="page-btn" href="<?= htmlspecialchars($buildUserLogPageUrl($userLogPage - 1), ENT_QUOTES, 'UTF-8') ?>">قبلی</a>
+      <?php endif; ?>
+      <?php if ($userLogPage < $userLogTotalPages): ?>
+        <a class="page-btn" href="<?= htmlspecialchars($buildUserLogPageUrl($userLogPage + 1), ENT_QUOTES, 'UTF-8') ?>">بعدی</a>
       <?php endif; ?>
     </div>
   </section>

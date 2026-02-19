@@ -122,6 +122,28 @@ CREATE TABLE IF NOT EXISTS auth_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL;
 
+    $userManagementLogsSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS user_management_logs (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    actor_user_id INT UNSIGNED NOT NULL,
+    action ENUM('create', 'delete') NOT NULL,
+    target_user_id INT UNSIGNED NULL,
+    target_first_name VARCHAR(100) NOT NULL DEFAULT '',
+    target_last_name VARCHAR(100) NOT NULL DEFAULT '',
+    target_phone VARCHAR(20) NOT NULL DEFAULT '',
+    target_national_code CHAR(10) NOT NULL DEFAULT '',
+    target_role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+    ip_address VARCHAR(45) NOT NULL DEFAULT '',
+    user_agent VARCHAR(255) NOT NULL DEFAULT '',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_mgmt_logs_created_at (created_at),
+    INDEX idx_user_mgmt_logs_actor (actor_user_id),
+    INDEX idx_user_mgmt_logs_action (action),
+    CONSTRAINT fk_user_mgmt_logs_actor FOREIGN KEY (actor_user_id)
+        REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+
     $newsSql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS news (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -261,6 +283,7 @@ SQL;
     $pdo->exec($eventsSql);
     $pdo->exec($logsSql);
     $pdo->exec($authLogsSql);
+    $pdo->exec($userManagementLogsSql);
     $pdo->exec($newsSql);
     $pdo->exec($newsMediaSql);
     $pdo->exec($schedulesSql);
@@ -418,6 +441,24 @@ CREATE TABLE IF NOT EXISTS auth_logs (
 );
 SQL;
 
+$userManagementLogsSql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS user_management_logs (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_user_id       INTEGER NOT NULL,
+    action              TEXT NOT NULL CHECK(action IN ('create', 'delete')),
+    target_user_id      INTEGER,
+    target_first_name   TEXT NOT NULL DEFAULT '',
+    target_last_name    TEXT NOT NULL DEFAULT '',
+    target_phone        TEXT NOT NULL DEFAULT '',
+    target_national_code TEXT NOT NULL DEFAULT '',
+    target_role         TEXT NOT NULL DEFAULT 'user' CHECK(target_role IN ('admin', 'user')),
+    ip_address          TEXT NOT NULL DEFAULT '',
+    user_agent          TEXT NOT NULL DEFAULT '',
+    created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT
+);
+SQL;
+
 $newsSql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS news (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -555,6 +596,7 @@ SQL;
     $pdo->exec($eventsSql);
     $pdo->exec($logsSql);
     $pdo->exec($authLogsSql);
+    $pdo->exec($userManagementLogsSql);
     $pdo->exec($newsSql);
     $pdo->exec($newsMediaSql);
     $pdo->exec($schedulesSql);
@@ -574,6 +616,9 @@ SQL;
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_auth_logs_created_at      ON auth_logs(created_at)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_auth_logs_event           ON auth_logs(event)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_auth_logs_user            ON auth_logs(user_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_user_mgmt_logs_created_at ON user_management_logs(created_at)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_user_mgmt_logs_actor      ON user_management_logs(actor_user_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_user_mgmt_logs_action     ON user_management_logs(action)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_news_published_at         ON news(published_at)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_news_is_published         ON news(is_published)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_news_media_news           ON news_media(news_id, position)");

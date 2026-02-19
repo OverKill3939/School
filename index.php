@@ -44,13 +44,23 @@ require __DIR__ . '/partials/header.php';
 
   <section class="home-hero">
     <div class="hero-copy">
-      <h1>سلام <?= htmlspecialchars($user['first_name']) ?> 👋</h1>
-      <p>خوش آمدید به پنل مدیریت هنرستان دارالفنون</p>
+      <h1>
+        <span><?= htmlspecialchars($user['first_name']) ?>، خوش آمدی</span>
+        <span class="hero-greeting-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 3L13.8 7.2L18 9L13.8 10.8L12 15L10.2 10.8L6 9L10.2 7.2L12 3Z" />
+            <path d="M5 3V6.2" />
+            <path d="M3.4 4.6H6.6" />
+            <path d="M19 17V21" />
+            <path d="M17 19H21" />
+          </svg>
+        </span>
+      </h1>
+      <p>خوش اومدی به داشبورد مدیریت هنرستان دارالفنون؛ همه ابزارهای اصلی همین‌جا آماده‌ست.</p>
       <div class="hero-actions">
-        <a href="calendar.php" class="cta cta-primary">تقویم آموزشی</a>
-        <a href="news.php" class="cta cta-success">اخبار جدید</a>
+        <a href="profile-settings.php" class="cta cta-primary">تنظیمات پروفایل</a>
         <?php if ($isAdmin): ?>
-          <a href="users.php" class="cta cta-purple">مدیریت کاربران</a>
+          <a href="database.php" class="cta cta-purple">مدیریت دیتابیس</a>
         <?php endif; ?>
       </div>
     </div>

@@ -8,7 +8,7 @@ $allowedGrades = [10, 11, 12];
 $allowedFields = ['شبکه و نرم افزار', 'برق', 'الکترونیک'];
 
 $pageTitle = 'رأی گیری شورای دانش آموزی';
-$activeNav = '';
+$activeNav = 'vote';
 $extraStyles = ['css/vote.css'];
 
 $voteError = trim((string)($_SESSION['vote_error'] ?? ''));

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../auth/helpers.php';
+require_once __DIR__ . '/../auth/database_maintenance.php';
 start_secure_session();
 
 $pageTitle = $pageTitle ?? 'هنرستان دارالفنون';
@@ -9,6 +10,10 @@ $activeNav = $activeNav ?? '';
 $user = current_user();
 $profileImage = user_profile_image_url($user);
 $shouldPromptNotificationPermission = $user ? consume_notification_permission_prompt() : false;
+
+if (($user['role'] ?? '') === 'admin') {
+    run_scheduled_database_backup();
+}
 ?>
 <!doctype html>
 <html lang="fa" dir="rtl">
@@ -43,7 +48,7 @@ $shouldPromptNotificationPermission = $user ? consume_notification_permission_pr
         <a href="index.php" <?= $activeNav === 'home' ? 'style="color: var(--accent);"' : '' ?>>خانه</a>
 
         <!-- برگشت به حالت قبلی: دانش آموزان -->
-        <details class="students-menu <?= in_array($activeNav, ['schedule'], true) ? 'is-active' : '' ?>">
+        <details class="students-menu <?= in_array($activeNav, ['schedule', 'vote'], true) ? 'is-active' : '' ?>">
           <summary>دانش آموزان</summary>
           <div class="students-menu-list">
             <a href="schedule.php" class="schedule <?= $activeNav === 'schedule' ? 'active' : '' ?>">برنامه هفتگی</a>
@@ -56,7 +61,7 @@ $shouldPromptNotificationPermission = $user ? consume_notification_permission_pr
         <a href="about.php">درباره</a>
 
         <?php if (($user['role'] ?? '') === 'admin'): ?>
-        <details class="admin-menu <?= in_array($activeNav, ['logs', 'users', 'election'], true) ? 'is-active' : '' ?>">
+        <details class="admin-menu <?= in_array($activeNav, ['logs', 'users', 'election', 'attendance', 'database'], true) ? 'is-active' : '' ?>">
           <summary>مدیریت</summary>
           <div class="admin-menu-list">
             <a href="logs.php" class="logs <?= $activeNav === 'logs' ? 'active' : '' ?>">لاگ</a>
@@ -64,6 +69,7 @@ $shouldPromptNotificationPermission = $user ? consume_notification_permission_pr
             <!-- گزینه جدید: انتخابات فقط برای ادمین -->
             <a href="election.php" class="election <?= $activeNav === 'election' ? 'active' : '' ?>">انتخابات</a>
             <a href="attendance.php" class="attendance <?= $activeNav === 'attendance' ? 'active' : '' ?>">حضور و غیاب</a>
+            <a href="database.php" class="database <?= $activeNav === 'database' ? 'active' : '' ?>">دیتابیس</a>
           </div>
         </details>
         <?php endif; ?>

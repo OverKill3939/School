@@ -1,7 +1,7 @@
 @font-face {
   font-family: "Vazirmatn";
-  src: url("../fonts/Vazirmatn[wght].woff2") format("woff2-variations"),
-       url("../fonts/Vazirmatn[wght].woff2") format("woff2");
+  src: url("./fonts/Vazirmatn[wght].woff2") format("woff2-variations"),
+       url("./fonts/Vazirmatn[wght].woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -217,6 +217,15 @@ body.is-scrolled .site-header {
   justify-content: center;
 }
 
+.nav a,
+.students-menu > summary,
+.admin-menu > summary {
+  font-family: "Vazirmatn", "Vazir", "IRANSans", "Tahoma", "Segoe UI", sans-serif;
+  font-size: 0.98rem;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
 .nav a {
   padding: 0.38rem 0.72rem;
   border-radius: 10px;
@@ -326,6 +335,14 @@ body.is-scrolled .site-header {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 12l2 2 4-4m5-3H4a1 1 0 00-1 1v10a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1zM7 7V5a5 5 0 0110 0v2'/%3E%3C/svg%3E");
 }
 
+.admin-menu-list a.attendance::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 5a2 2 0 002 2h2a2 2 0 002-2m-6 9l2 2 4-4'/%3E%3C/svg%3E");
+}
+
+.admin-menu-list a.database::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cellipse cx='12' cy='5' rx='7' ry='3' stroke-width='2'/%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 5v14c0 1.657 3.134 3 7 3s7-1.343 7-3V5M5 12c0 1.657 3.134 3 7 3s7-1.343 7-3'/%3E%3C/svg%3E");
+}
+
 .admin-menu-list a:not(:last-child) {
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
   padding-bottom: 0.5rem;
@@ -422,6 +439,16 @@ body.is-scrolled .site-header {
 
 .students-menu-list a.schedule::before {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' /%3E%3C/svg%3E");
+}
+
+.students-menu-list a.vote::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 12a9 9 0 11-18 0 9 9 0 0118 0z'/%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9.75 12l1.5 1.5 3-3'/%3E%3C/svg%3E");
+}
+
+.students-menu-list a:not(:last-child) {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.2rem;
 }
 
 .students-menu-list a:hover,
@@ -928,6 +955,18 @@ body.is-scrolled .site-header {
   font-weight: 600;
 }
 
+.nav .admin-menu > summary {
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.nav .admin-menu > summary:hover,
+.nav .admin-menu[open] > summary,
+.nav .admin-menu.is-active > summary {
+  color: #115e59;
+  background: rgba(15, 118, 110, 0.12);
+}
+
 .admin-menu .election {
   color: #8b5cf6; /* بنفش برای انتخابات */
 }
@@ -935,4 +974,88 @@ body.is-scrolled .site-header {
 .admin-menu .election.active {
   color: #7c3aed;
   background: rgba(124, 58, 237, 0.08);
+}
+
+/* Restore default color for the "مدیریت" trigger and style submenu items */
+.nav .admin-menu > summary {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.nav .admin-menu > summary:hover,
+.nav .admin-menu[open] > summary,
+.nav .admin-menu.is-active > summary {
+  color: var(--accent);
+  background: rgba(37, 99, 235, 0.14);
+}
+
+.admin-menu-list a.logs {
+  color: #0f766e;
+}
+
+.admin-menu-list a.users {
+  color: #1d4ed8;
+}
+
+.admin-menu-list a.election {
+  color: #8b5cf6;
+}
+
+.admin-menu-list a.attendance {
+  color: #b45309;
+}
+
+.admin-menu-list a.database {
+  color: #0e7490;
+}
+
+.admin-menu-list a.logs:hover,
+.admin-menu-list a.logs.active {
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.admin-menu-list a.users:hover,
+.admin-menu-list a.users.active {
+  color: #1d4ed8;
+  background: rgba(29, 78, 216, 0.1);
+}
+
+.admin-menu-list a.election:hover,
+.admin-menu-list a.election.active {
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.admin-menu-list a.attendance:hover,
+.admin-menu-list a.attendance.active {
+  color: #b45309;
+  background: rgba(180, 83, 9, 0.12);
+}
+
+.admin-menu-list a.database:hover,
+.admin-menu-list a.database.active {
+  color: #0e7490;
+  background: rgba(14, 116, 144, 0.1);
+}
+
+/* Student submenu in the same style pattern as admin submenu */
+.students-menu-list a.schedule {
+  color: #1d4ed8;
+}
+
+.students-menu-list a.vote {
+  color: #0f766e;
+}
+
+.students-menu-list a.schedule:hover,
+.students-menu-list a.schedule.active {
+  color: #1d4ed8;
+  background: rgba(29, 78, 216, 0.1);
+}
+
+.students-menu-list a.vote:hover,
+.students-menu-list a.vote.active {
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.1);
 }

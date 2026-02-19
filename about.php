@@ -6,7 +6,8 @@ declare(strict_types=1);
 
 $pageTitle = 'درباره هنرستان دارالفنون | شاهرود';
 $activeNav = 'about';   // اگر منو داری، این رو فعال کن
-$extraStyles = ['css/about.css'];
+$extraStyles = ['css/about.css?v=' . filemtime(__DIR__ . '/css/about.css')];
+$extraScripts = ['js/about-entrance.js?v=' . filemtime(__DIR__ . '/js/about-entrance.js')];
 
 require __DIR__ . '/partials/header.php';
 ?>

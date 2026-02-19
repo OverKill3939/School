@@ -17,11 +17,8 @@ return [
         'timezone' => getenv('APP_TIMEZONE') ?: 'Asia/Tehran',
         'base_url' => getenv('APP_BASE_URL') ?: '',
     ],
-];
-return [
-    'db' => [ /* دیتابیس اصلی */ ],
     'attendance_db' => [
-        'driver'      => 'sqlite',
-        'sqlite_path' => __DIR__ . '/../data/attendance.sqlite',
+        'driver' => 'sqlite',
+        'sqlite_path' => getenv('ATTENDANCE_DB_SQLITE_PATH') ?: (__DIR__ . '/../data/attendance.sqlite'),
     ],
 ];

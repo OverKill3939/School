@@ -1,346 +1,292 @@
 <?php
 // attendance.php
-// صفحه مدیریت حضور و غیاب روزانه - فقط ادمین
-
 declare(strict_types=1);
 
 require_once __DIR__ . '/auth/helpers.php';
 require_once __DIR__ . '/attendance_db.php';
 
+require_admin();
 
-// فقط ادمین مجاز است
-$user = current_user();
-if (!$user || $user['role'] !== 'admin') {
-    http_response_code(403);
-    header('Location: index.php?msg=' . urlencode('دسترسی فقط برای مدیران امکان‌پذیر است'));
-    exit;
-}
+$grades = attendance_allowed_grades();
+$fields = attendance_allowed_fields();
 
-$pageTitle    = 'حضور و غیاب روزانه';
-$activeNav    = 'attendance';
-$extraStyles  = ['css/attendance.css'];
-$extraScripts = ['js/attendance.js'];   // اگر جاوااسکریپت جداگانه داری
+$today = (new DateTimeImmutable('today'))->format('Y-m-d');
+$defaultGrade = (int)array_key_first($grades);
+$defaultField = $fields[0] ?? 'شبکه و نرم افزار';
 
-// مقادیر پیش‌فرض
-$today  = date('Y-m-d');
-$date   = $_GET['date']  ?? $today;
-$grade  = (int)($_GET['grade'] ?? 1);
-$field  = $_GET['field'] ?? 'کامپیوتر';
+$date = normalize_attendance_date((string)($_GET['date'] ?? '')) ?? $today;
+$grade = normalize_attendance_grade($_GET['grade'] ?? null) ?? $defaultGrade;
+$field = normalize_attendance_field((string)($_GET['field'] ?? '')) ?? $defaultField;
 
-$grades = [1 => 'دهم', 2 => 'یازدهم', 3 => 'دوازدهم'];
-$fields = ['کامپیوتر', 'الکترونیک', 'برق'];
+$pageTitle = 'حضور و غیاب روزانه | هنرستان دارالفنون';
+$activeNav = 'attendance';
+$extraStyles = ['css/attendance.css?v=' . filemtime(__DIR__ . '/css/attendance.css')];
+$extraScripts = ['js/attendance.js?v=' . filemtime(__DIR__ . '/js/attendance.js')];
 
-// اتصال به دیتابیس حضور و غیاب
-$pdo_att = get_attendance_db();
+$pdoAtt = get_attendance_db();
 
-// گرفتن رکوردهای غیبت
-$stmt = $pdo_att->prepare("
-    SELECT * FROM attendance 
-    WHERE date = ? AND grade = ? AND field = ?
-    ORDER BY student_name ASC
-");
+$stmt = $pdoAtt->prepare(
+    'SELECT id, date, grade, field, student_name, absent_hours, notes, recorded_by, created_at
+     FROM attendance
+     WHERE date = ? AND grade = ? AND field = ?
+     ORDER BY student_name COLLATE NOCASE ASC, id DESC'
+);
 $stmt->execute([$date, $grade, $field]);
 $records = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-// گرفتن نام ثبت‌کننده‌ها از دیتابیس اصلی
 $recorderNames = [];
-if ($records) {
-    $pdo_main = get_db();  // دیتابیس اصلی (users)
+if ($records !== []) {
+    $ids = array_values(array_unique(array_map('intval', array_column($records, 'recorded_by'))));
 
-    $ids = array_unique(array_column($records, 'recorded_by'));
-    if ($ids) {
+    if ($ids !== []) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $userStmt = $pdo_main->prepare("
-            SELECT id, first_name, last_name 
-            FROM users 
-            WHERE id IN ($placeholders)
-        ");
+        $userStmt = get_db()->prepare("SELECT id, first_name, last_name FROM users WHERE id IN ($placeholders)");
         $userStmt->execute($ids);
 
-        foreach ($userStmt->fetchAll(PDO::FETCH_ASSOC) as $u) {
-            $recorderNames[$u['id']] = trim($u['first_name'] . ' ' . $u['last_name']) ?: 'ادمین';
+        foreach ($userStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $fullName = trim(((string)$row['first_name']) . ' ' . ((string)$row['last_name']));
+            $recorderNames[(int)$row['id']] = $fullName !== '' ? $fullName : 'مدیر';
         }
     }
 }
+
+$flash = attendance_take_flash();
+$recordsCount = count($records);
+
+$todayUrl = attendance_redirect_url($today, $grade, $field);
+$resetUrl = attendance_redirect_url($today, $defaultGrade, $defaultField);
 
 require __DIR__ . '/partials/header.php';
 ?>
-<?php
-if (isset($_SESSION['attendance_message'])) {
-    echo '<div class="alert alert-success alert-dismissible fade show" role="alert">';
-    echo htmlspecialchars($_SESSION['attendance_message']);
-    echo '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
-    echo '</div>';
-    unset($_SESSION['attendance_message']);
-}
-?>
-<main class="attendance-page container py-4">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0">حضور و غیاب روزانه</h1>
+<main class="attendance-page">
+  <section class="attendance-card">
+    <div class="attendance-head">
+      <h1>مدیریت حضور و غیاب</h1>
+      <p>ثبت غیبت روزانه، ویرایش سریع رکوردها و حذف ایمن با حفظ سازگاری کامل با پنل مدیریت.</p>
     </div>
 
-    <!-- فرم فیلتر -->
-    <div class="card mb-4 shadow-sm">
-        <div class="card-body">
-            <form method="GET" class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">تاریخ</label>
-                    <input type="date" name="date" class="form-control" value="<?= htmlspecialchars($date) ?>" required>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">پایه</label>
-                    <select name="grade" class="form-select" required>
-                        <?php foreach ($grades as $g => $name): ?>
-                            <option value="<?= $g ?>" <?= $grade === $g ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($name) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">رشته</label>
-                    <select name="field" class="form-select" required>
-                        <?php foreach ($fields as $f): ?>
-                            <option value="<?= htmlspecialchars($f) ?>" <?= $field === $f ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($f) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">نمایش / ثبت</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- فرم ثبت غیبت جدید -->
-    <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">ثبت غایب جدید – <?= str_replace('-', '/', $date) ?></h5>
-        </div>
-        <div class="card-body">
-            <form method="POST" action="attendance_save.php" id="attendanceForm">
-                <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
-                <input type="hidden" name="date"  value="<?= htmlspecialchars($date) ?>">
-                <input type="hidden" name="grade" value="<?= $grade ?>">
-                <input type="hidden" name="field" value="<?= htmlspecialchars($field) ?>">
-
-                <div id="absent-rows" class="mb-3"></div>
-
-                <div class="d-flex gap-2">
-                    <button type="button" id="add-student" class="btn btn-outline-primary">
-                        + اضافه کردن دانش‌آموز
-                    </button>
-                    <button type="submit" class="btn btn-success">
-                        ذخیره غیبت‌ها
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- لیست غیبت‌های ثبت‌شده -->
-    <?php if ($records): ?>
-        <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">غیبت‌های ثبت‌شده (<?= count($records) ?> مورد)</h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>نام و نام خانوادگی</th>
-                                <th>زنگ‌های غیبت</th>
-                                <th>یادداشت</th>
-                                <th>ثبت‌کننده</th>
-                                <th class="text-end">عملیات</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($records as $r): 
-                                $hoursArr = explode(',', $r['absent_hours']);
-                                $hoursChecked = array_fill(1, 4, false);
-                                foreach ($hoursArr as $h) {
-                                    $h = (int)trim($h);
-                                    if ($h >= 1 && $h <= 4) $hoursChecked[$h] = true;
-                                }
-                            ?>
-                                <tr data-id="<?= $r['id'] ?>">
-                                    <td><?= htmlspecialchars($r['student_name']) ?></td>
-                                    <td>
-                                        <?php for ($i = 1; $i <= 4; $i++): ?>
-                                            <span class="badge <?= $hoursChecked[$i] ? 'bg-danger' : 'bg-secondary' ?> me-1">
-                                                <?= $i ?>
-                                            </span>
-                                        <?php endfor; ?>
-                                    </td>
-                                    <td><?= htmlspecialchars($r['notes'] ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($recorderNames[$r['recorded_by']] ?? 'ادمین ناشناس') ?></td>
-                                    <td class="text-end">
-                                        <button class="btn btn-sm btn-outline-primary edit-btn me-1"
-                                                data-bs-toggle="modal" data-bs-target="#editModal"
-                                                data-id="<?= $r['id'] ?>"
-                                                data-name="<?= htmlspecialchars($r['student_name'], ENT_QUOTES) ?>"
-                                                data-notes="<?= htmlspecialchars($r['notes'], ENT_QUOTES) ?>"
-                                                data-hours='<?= json_encode($hoursChecked, JSON_UNESCAPED_UNICODE) ?>'>
-                                            ویرایش
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger delete-btn"
-                                                data-id="<?= $r['id'] ?>">
-                                            حذف
-                                        </button>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    <?php else: ?>
-        <div class="alert alert-info text-center py-4">
-            هیچ غیبتی برای این تاریخ، پایه و رشته ثبت نشده است.
-        </div>
+    <?php if (is_array($flash)): ?>
+      <div class="alert <?= ($flash['type'] ?? '') === 'success' ? 'alert-success' : 'alert-error' ?>" role="status">
+        <?= htmlspecialchars((string)$flash['text'], ENT_QUOTES, 'UTF-8') ?>
+      </div>
     <?php endif; ?>
 
-</main>
+    <form method="get" class="attendance-filters" novalidate>
+      <label>
+        تاریخ
+        <input type="date" name="date" value="<?= htmlspecialchars($date, ENT_QUOTES, 'UTF-8') ?>" required />
+      </label>
 
+      <label>
+        پایه
+        <select name="grade" required>
+          <?php foreach ($grades as $gradeValue => $gradeLabel): ?>
+            <option value="<?= $gradeValue ?>" <?= $grade === $gradeValue ? 'selected' : '' ?>>
+              <?= htmlspecialchars($gradeLabel, ENT_QUOTES, 'UTF-8') ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </label>
 
-<!-- مودال ویرایش -->
-<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editModalLabel">ویرایش رکورد غیبت</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="POST" action="attendance_update.php">
-                <div class="modal-body">
-                    <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
-                    <input type="hidden" name="id" id="edit_id">
-                    <input type="hidden" name="date" value="<?= htmlspecialchars($date) ?>">
-                    <input type="hidden" name="grade" value="<?= $grade ?>">
-                    <input type="hidden" name="field" value="<?= htmlspecialchars($field) ?>">
+      <label>
+        رشته
+        <select name="field" required>
+          <?php foreach ($fields as $fieldLabel): ?>
+            <option value="<?= htmlspecialchars($fieldLabel, ENT_QUOTES, 'UTF-8') ?>" <?= $field === $fieldLabel ? 'selected' : '' ?>>
+              <?= htmlspecialchars($fieldLabel, ENT_QUOTES, 'UTF-8') ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </label>
 
-                    <div class="mb-3">
-                        <label class="form-label">نام و نام خانوادگی</label>
-                        <input type="text" class="form-control" id="edit_name" name="student_name" required>
-                    </div>
+      <div class="filter-actions">
+        <button type="submit" class="btn-primary">نمایش اطلاعات</button>
+        <a href="<?= htmlspecialchars($todayUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary">امروز</a>
+        <a href="<?= htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary">بازنشانی</a>
+      </div>
+    </form>
 
-                    <div class="mb-3">
-                        <label class="form-label">زنگ‌های غیبت</label>
-                        <div class="d-flex gap-3">
-                            <?php for ($i = 1; $i <= 4; $i++): ?>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="hours[]" value="<?= $i ?>" id="edit_h<?= $i ?>">
-                                    <label class="form-check-label" for="edit_h<?= $i ?>">
-                                        زنگ <?= $i ?>
-                                    </label>
-                                </div>
-                            <?php endfor; ?>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">یادداشت</label>
-                        <textarea class="form-control" name="notes" id="edit_notes" rows="2"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
-                    <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
-                </div>
-            </form>
-        </div>
+    <div class="attendance-meta">
+      <span>تاریخ فعال: <?= htmlspecialchars($date, ENT_QUOTES, 'UTF-8') ?></span>
+      <span>تعداد رکوردهای امروز: <strong id="recordCount"><?= $recordsCount ?></strong></span>
     </div>
-</div>
 
-<?php require __DIR__ . '/partials/footer.php'; ?>
+    <section class="attendance-create" aria-label="ثبت غیبت جدید">
+      <div class="section-head">
+        <h2>ثبت غیبت جدید</h2>
+        <p>برای هر دانش آموز حداقل یک زنگ را انتخاب کنید. ثبت تکراری، به صورت هوشمند بروزرسانی می‌شود.</p>
+      </div>
 
-<script>
-// اضافه کردن ردیف جدید
-let rowIndex = 0;
+      <form method="post" action="attendance_save.php" id="attendanceCreateForm" class="attendance-form" novalidate>
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>" />
+        <input type="hidden" name="date" value="<?= htmlspecialchars($date, ENT_QUOTES, 'UTF-8') ?>" />
+        <input type="hidden" name="grade" value="<?= $grade ?>" />
+        <input type="hidden" name="field" value="<?= htmlspecialchars($field, ENT_QUOTES, 'UTF-8') ?>" />
 
-document.getElementById('add-student')?.addEventListener('click', () => {
-    const container = document.getElementById('absent-rows');
-    const row = document.createElement('div');
-    row.className = 'absent-row mb-3 p-3 border rounded bg-light';
-    row.innerHTML = `
-        <div class="row g-2">
-            <div class="col-md-4">
-                <input type="text" name="students[${rowIndex}][name]" class="form-control" 
-                       placeholder="نام و نام خانوادگی" required>
-            </div>
-            <div class="col-md-5">
-                <div class="d-flex gap-2 flex-wrap">
-                    ${[1,2,3,4].map(i => `
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="students[${rowIndex}][hours][]" value="${i}" id="h${rowIndex}_${i}">
-                            <label class="form-check-label" for="h${rowIndex}_${i}">زنگ ${i}</label>
-                        </div>
-                    `).join('')}
+        <div id="absentRows" class="absent-rows">
+          <div class="absent-row" data-row-index="0">
+            <div class="row-grid">
+              <label>
+                نام و نام خانوادگی
+                <input type="text" name="students[0][name]" maxlength="120" required placeholder="مثال: علی رضایی" />
+              </label>
+
+              <fieldset class="hours-fieldset">
+                <legend>زنگ های غیبت</legend>
+                <div class="hours-grid">
+                  <?php for ($hour = 1; $hour <= 4; $hour++): ?>
+                    <label class="hour-checkbox" for="create_h_0_<?= $hour ?>">
+                      <input id="create_h_0_<?= $hour ?>" type="checkbox" name="students[0][hours][]" value="<?= $hour ?>" />
+                      <span>زنگ <?= $hour ?></span>
+                    </label>
+                  <?php endfor; ?>
                 </div>
+              </fieldset>
+
+              <label>
+                یادداشت
+                <input type="text" name="students[0][notes]" maxlength="500" placeholder="اختیاری" />
+              </label>
+
+              <div class="row-actions">
+                <button type="button" class="btn-danger remove-row" aria-label="حذف این ردیف">حذف</button>
+              </div>
             </div>
-            <div class="col-md-3 d-flex gap-2">
-                <input type="text" name="students[${rowIndex}][notes]" class="form-control" placeholder="یادداشت">
-                <button type="button" class="btn btn-outline-danger btn-sm remove-row">حذف</button>
-            </div>
+          </div>
         </div>
-    `;
-    container.appendChild(row);
-    rowIndex++;
-});
 
-// حذف ردیف
-document.addEventListener('click', e => {
-    if (e.target.classList.contains('remove-row')) {
-        e.target.closest('.absent-row')?.remove();
-    }
-});
+        <div class="create-actions">
+          <button type="button" id="addStudentRow" class="btn-secondary">افزودن دانش آموز</button>
+          <button type="submit" class="btn-primary">ذخیره غیبت ها</button>
+        </div>
+      </form>
+    </section>
 
-// ویرایش - پر کردن مودال
-document.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', function () {
-        document.getElementById('edit_id').value    = this.dataset.id;
-        document.getElementById('edit_name').value  = this.dataset.name;
-        document.getElementById('edit_notes').value = this.dataset.notes;
+    <section class="attendance-list" aria-label="لیست غیبت های ثبت شده">
+      <div class="section-head">
+        <h2>غیبت های ثبت شده</h2>
+        <p>رکوردهای فیلتر جاری را می‌توانید ویرایش یا حذف کنید.</p>
+      </div>
 
-        const hours = JSON.parse(this.dataset.hours);
-        for (let i = 1; i <= 4; i++) {
-            document.getElementById(`edit_h${i}`).checked = !!hours[i];
-        }
-    });
-});
+      <?php if ($records === []): ?>
+        <div id="attendanceEmptyState" class="empty-state">برای فیلتر انتخابی، رکوردی ثبت نشده است.</div>
+      <?php else: ?>
+        <div id="attendanceEmptyState" class="empty-state is-hidden">برای فیلتر انتخابی، رکوردی ثبت نشده است.</div>
+        <div class="attendance-table-wrap">
+          <table class="attendance-table">
+            <thead>
+              <tr>
+                <th>نام دانش آموز</th>
+                <th>زنگ ها</th>
+                <th>یادداشت</th>
+                <th>ثبت کننده</th>
+                <th>زمان ثبت</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="attendanceRowsBody">
+              <?php foreach ($records as $record): ?>
+                <?php
+                  $hours = sanitize_attendance_hours(explode(',', (string)$record['absent_hours']));
+                  $hoursMap = array_fill(1, 4, false);
+                  foreach ($hours as $hour) {
+                      $hoursMap[$hour] = true;
+                  }
+                ?>
+                <tr data-record-id="<?= (int)$record['id'] ?>">
+                  <td data-label="نام دانش آموز" class="cell-name">
+                    <?= htmlspecialchars((string)$record['student_name'], ENT_QUOTES, 'UTF-8') ?>
+                  </td>
+                  <td data-label="زنگ ها">
+                    <div class="hours-badges">
+                      <?php for ($hour = 1; $hour <= 4; $hour++): ?>
+                        <span class="hour-badge <?= $hoursMap[$hour] ? 'is-absent' : 'is-present' ?>">زنگ <?= $hour ?></span>
+                      <?php endfor; ?>
+                    </div>
+                  </td>
+                  <td data-label="یادداشت" class="cell-notes">
+                    <?= htmlspecialchars((string)($record['notes'] !== '' ? $record['notes'] : '-'), ENT_QUOTES, 'UTF-8') ?>
+                  </td>
+                  <td data-label="ثبت کننده" class="cell-recorder">
+                    <?= htmlspecialchars((string)($recorderNames[(int)$record['recorded_by']] ?? 'مدیر نامشخص'), ENT_QUOTES, 'UTF-8') ?>
+                  </td>
+                  <td data-label="زمان ثبت" class="cell-date">
+                    <?= htmlspecialchars((string)$record['created_at'], ENT_QUOTES, 'UTF-8') ?>
+                  </td>
+                  <td data-label="عملیات" class="cell-actions">
+                    <button
+                      type="button"
+                      class="btn-action btn-edit edit-btn"
+                      data-id="<?= (int)$record['id'] ?>"
+                      data-name="<?= htmlspecialchars((string)$record['student_name'], ENT_QUOTES, 'UTF-8') ?>"
+                      data-hours="<?= htmlspecialchars((string)$record['absent_hours'], ENT_QUOTES, 'UTF-8') ?>"
+                      data-notes="<?= htmlspecialchars((string)$record['notes'], ENT_QUOTES, 'UTF-8') ?>"
+                      data-date="<?= htmlspecialchars((string)$record['date'], ENT_QUOTES, 'UTF-8') ?>"
+                      data-grade="<?= (int)$record['grade'] ?>"
+                      data-field="<?= htmlspecialchars((string)$record['field'], ENT_QUOTES, 'UTF-8') ?>"
+                    >ویرایش</button>
 
-// حذف با تأیید
-document.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', function () {
-        if (!confirm('آیا مطمئن هستید که می‌خواهید این غیبت را حذف کنید؟')) return;
+                    <form method="post" action="attendance_delete.php" class="delete-form" data-record-id="<?= (int)$record['id'] ?>">
+                      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>" />
+                      <input type="hidden" name="id" value="<?= (int)$record['id'] ?>" />
+                      <input type="hidden" name="date" value="<?= htmlspecialchars((string)$record['date'], ENT_QUOTES, 'UTF-8') ?>" />
+                      <input type="hidden" name="grade" value="<?= (int)$record['grade'] ?>" />
+                      <input type="hidden" name="field" value="<?= htmlspecialchars((string)$record['field'], ENT_QUOTES, 'UTF-8') ?>" />
+                      <button type="submit" class="btn-action btn-delete">حذف</button>
+                    </form>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php endif; ?>
+    </section>
+  </section>
 
-        const id = this.dataset.id;
-        fetch('attendance_delete.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `csrf_token=<?= urlencode(csrf_token()) ?>&id=${encodeURIComponent(id)}`
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                this.closest('tr').remove();
-                alert('با موفقیت حذف شد');
-            } else {
-                alert(data.error || 'خطایی رخ داد');
-            }
-        })
-        .catch(() => alert('خطا در ارتباط با سرور'));
-    });
-});
+  <div id="attendanceEditModal" class="attendance-modal" hidden>
+    <div class="attendance-modal-backdrop" data-modal-close></div>
+    <div class="attendance-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="attendanceEditTitle">
+      <div class="attendance-modal-head">
+        <h3 id="attendanceEditTitle">ویرایش رکورد غیبت</h3>
+        <button type="button" class="icon-close" data-modal-close aria-label="بستن">×</button>
+      </div>
 
-// اضافه کردن حداقل یک ردیف خالی در ابتدا
-if (document.getElementById('add-student')) {
-    document.getElementById('add-student').click();
-}
-</script>
+      <form method="post" action="attendance_update.php" id="attendanceEditForm" class="attendance-modal-form" novalidate>
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>" />
+        <input type="hidden" name="id" id="editRecordId" />
+        <input type="hidden" name="date" id="editRecordDate" value="<?= htmlspecialchars($date, ENT_QUOTES, 'UTF-8') ?>" />
+        <input type="hidden" name="grade" id="editRecordGrade" value="<?= $grade ?>" />
+        <input type="hidden" name="field" id="editRecordField" value="<?= htmlspecialchars($field, ENT_QUOTES, 'UTF-8') ?>" />
+
+        <label>
+          نام و نام خانوادگی
+          <input type="text" id="editStudentName" name="student_name" maxlength="120" required />
+        </label>
+
+        <fieldset class="hours-fieldset">
+          <legend>زنگ های غیبت</legend>
+          <div class="hours-grid">
+            <?php for ($hour = 1; $hour <= 4; $hour++): ?>
+              <label class="hour-checkbox" for="editHour<?= $hour ?>">
+                <input id="editHour<?= $hour ?>" type="checkbox" name="hours[]" value="<?= $hour ?>" />
+                <span>زنگ <?= $hour ?></span>
+              </label>
+            <?php endfor; ?>
+          </div>
+        </fieldset>
+
+        <label>
+          یادداشت
+          <textarea id="editNotes" name="notes" rows="3" maxlength="500" placeholder="اختیاری"></textarea>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" data-modal-close>انصراف</button>
+          <button type="submit" class="btn-primary">ذخیره تغییرات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+<?php require __DIR__ . '/partials/footer.php'; ?>

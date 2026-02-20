@@ -22,3 +22,10 @@ return [
         'sqlite_path' => getenv('ATTENDANCE_DB_SQLITE_PATH') ?: (__DIR__ . '/../data/attendance.sqlite'),
     ],
 ];
+return [
+    'db' => [ /* دیتابیس اصلی */ ],
+    'db_report' => [
+        'sqlite_path' => __DIR__ . '/../data/report_cards.sqlite',
+    ],
+    'app' => [ /* ... */ ],
+];
